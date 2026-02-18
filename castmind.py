@@ -11,6 +11,9 @@ from pathlib import Path
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
+# 导入CLI帮助系统
+from cli.help import display_help
+
 def setup_environment():
     """设置环境"""
     print("🧠🌊 CastMind - 播客智能流系统")
@@ -133,11 +136,20 @@ def main():
     # test命令
     subparsers.add_parser("test", help="运行测试")
     
+    # help命令
+    help_parser = subparsers.add_parser("help", help="显示帮助信息")
+    help_parser.add_argument("command_name", nargs="?", help="要查看的命令名称")
+    
     args = parser.parse_args()
     
     if not args.command:
         parser.print_help()
         return 1
+    
+    # help命令不需要环境检查
+    if args.command == "help":
+        display_help(getattr(args, 'command_name', None))
+        return 0
     
     # 设置环境
     if not setup_environment():
@@ -163,6 +175,9 @@ def main():
     elif args.command == "test":
         print("🧪 运行测试...")
         os.system("python -m pytest tests/ -v")
+        return 0
+    elif args.command == "help":
+        display_help(getattr(args, 'command_name', None))
         return 0
     else:
         parser.print_help()
