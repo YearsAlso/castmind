@@ -1,10 +1,16 @@
 # 🧠🌊 CastMind - 播客智能流系统
 
+![GitHub](https://img.shields.io/github/license/YearsAlso/castmind)
+![GitHub last commit](https://img.shields.io/github/last-commit/YearsAlso/castmind)
+![GitHub issues](https://img.shields.io/github/issues/YearsAlso/castmind)
+![GitHub stars](https://img.shields.io/github/stars/YearsAlso/castmind)
+![Python](https://img.shields.io/badge/Python-3.9+-3776AB)
+![uv](https://img.shields.io/badge/uv-快速Python包管理-FFD43B)
+
 ![CastMind](https://img.shields.io/badge/CastMind-播客智能流-4F46E5)
 ![AI智能](https://img.shields.badge/🧠-AI深度分析-F59E0B)
 ![流畅处理](https://img.shields.io/badge/🌊-流畅工作流-06B6D4)
 ![知识沉淀](https://img.shields.io/badge/📚-知识沉淀-10B981)
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 > **智能流动，智慧沉淀** - 自动化播客处理、AI深度分析、知识库集成
