@@ -1,0 +1,42 @@
+# CastMind - 开发依赖
+
+# 包含所有生产依赖
+-r requirements.txt
+
+# ==================== 测试增强 ====================
+pytest-xdist>=3.5.0
+pytest-mock>=3.11.0
+pytest-benchmark>=4.0.0
+hypothesis>=6.88.0
+factory-boy>=3.3.0
+
+# ==================== 代码质量增强 ====================
+ruff>=0.1.0
+isort>=5.12.0
+bandit>=1.7.5
+safety>=2.3.5
+
+# ==================== 类型检查增强 ====================
+types-requests>=2.31.0
+types-pyyaml>=6.0.0
+
+# ==================== 文档增强 ====================
+mkdocs-autorefs>=0.5.0
+mkdocs-include-markdown-plugin>=6.0.0
+mkdocstrings[python]>=0.23.0
+
+# ==================== 开发工具 ====================
+ipython>=8.17.0
+jupyter>=1.0.0
+debugpy>=1.8.0
+watchdog>=3.0.0
+
+# ==================== 构建工具 ====================
+build>=0.10.0
+twine>=4.0.0
+setuptools>=68.0.0
+wheel>=0.41.0
+
+# ==================== Docker工具 ====================
+docker>=6.1.0
+docker-compose>=1.29.0
