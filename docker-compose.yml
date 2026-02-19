@@ -1,0 +1,229 @@
+# 🐳 CastMind Docker Compose 配置
+# 版本: 1.0.0
+# 描述: 完整的 CastMind 服务栈
+
+version: '3.8'
+
+# 网络配置
+networks:
+  castmind-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# 数据卷配置
+volumes:
+  castmind-data:
+    driver: local
+  castmind-logs:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+# 服务定义
+services:
+  # Redis 服务（消息队列和缓存）
+  redis:
+    image: redis:7-alpine
+    container_name: castmind-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-castmind123}
+    networks:
+      - castmind-network
+    volumes:
+      - redis-data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-castmind123}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-castmind123}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # PostgreSQL 数据库（可选，生产环境推荐）
+  postgres:
+    image: postgres:15-alpine
+    container_name: castmind-postgres
+    restart: unless-stopped
+    networks:
+      - castmind-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-castmind}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-castmind123}
+      - POSTGRES_DB=${POSTGRES_DB:-castmind}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-castmind}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # CastMind 主服务
+  castmind:
+    build:
+      context: .
+      target: production
+    container_name: castmind
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - castmind-network
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+    volumes:
+      - castmind-data:/app/data
+      - castmind-logs:/app/logs
+      - ./config:/app/config:ro
+      # Obsidian 集成（如果配置了）
+      - ${OBSIDIAN_VAULT:-./obsidian}:/obsidian:ro
+    environment:
+      # 应用配置
+      - APP_ENV=${APP_ENV:-production}
+      - TZ=${TZ:-Asia/Shanghai}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # 数据库配置
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///data/castmind.db}
+      # 可选 PostgreSQL: postgresql://${POSTGRES_USER:-castmind}:${POSTGRES_PASSWORD:-castmind123}@postgres:5432/${POSTGRES_DB:-castmind}
+      
+      # Redis 配置
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-castmind123}@redis:6379/0
+      
+      # AI 配置
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.deepseek.com}
+      - DEFAULT_AI_MODEL=${DEFAULT_AI_MODEL:-deepseek-chat}
+      
+      # Obsidian 集成配置
+      - OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-/obsidian}
+      - OBSIDIAN_PODCASTS_DIR=${OBSIDIAN_PODCASTS_DIR:-/obsidian/Podcasts/CastMind}
+      
+      # 任务配置
+      - PROCESS_BATCH_SIZE=${PROCESS_BATCH_SIZE:-5}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+      - RETRY_DELAY=${RETRY_DELAY:-60}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    # 安全配置
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Celery Worker（任务处理）
+  celery-worker:
+    build:
+      context: .
+      target: production
+    container_name: castmind-celery-worker
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - castmind
+    networks:
+      - castmind-network
+    volumes:
+      - castmind-data:/app/data
+      - castmind-logs:/app/logs
+      - ./config:/app/config:ro
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-castmind123}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-castmind123}@redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: celery -A app.tasks worker --loglevel=info --concurrency=4
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+
+  # Celery Beat（定时任务调度）
+  celery-beat:
+    build:
+      context: .
+      target: production
+    container_name: castmind-celery-beat
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - castmind-network
+    volumes:
+      - castmind-data:/app/data
+      - ./config:/app/config:ro
+    environment:
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-castmind123}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-castmind123}@redis:6379/0
+    command: celery -A app.tasks beat --loglevel=info
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+
+  # 监控服务（可选）
+  monitoring:
+    image: grafana/grafana:latest
+    container_name: castmind-monitoring
+    restart: unless-stopped
+    depends_on:
+      - castmind
+    networks:
+      - castmind-network
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+volumes:
+  grafana-data:
+    driver: local
