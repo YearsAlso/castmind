@@ -113,15 +113,31 @@ services:
 ### 自动化流程
 ```
 代码推送 → 质量检查 → 单元测试 → 集成测试 → 
-Docker 构建 → 安全扫描 → 测试环境部署 → 生产环境部署
+Docker 构建测试 → 安全扫描 → 生成报告
 ```
 
 ### GitHub Actions 工作流
-- **代码质量检查** - Black, Flake8, MyPy, Bandit
-- **自动化测试** - 单元测试 + 集成测试
-- **Docker 构建** - 多架构支持 (amd64, arm64)
-- **安全扫描** - Trivy 漏洞扫描
-- **自动部署** - 测试环境 + 生产环境
+1. **🔍 CI 工作流** (`ci.yml`)
+   - **代码质量检查** - Black, Flake8, MyPy, Bandit
+   - **自动化测试** - 单元测试 + 集成测试
+   - **Docker 构建测试** - 验证构建过程
+   - **测试报告** - 覆盖率报告和测试结果
+
+2. **🐳 镜像发布工作流** (`publish-images.yml`)
+   - **自动标签生成** - 基于 Git 标签和分支
+   - **多架构构建** - amd64 + arm64 支持
+   - **安全扫描** - Trivy 漏洞扫描
+   - **SBOM 生成** - 软件物料清单
+   - **自动发布** - GitHub Releases 和容器镜像
+
+### 标签策略
+```
+Git 标签 → Docker 镜像标签
+v1.2.3      → v1.2.3, 1.2.3, 1.2, 1, latest
+v1.2.3-rc1  → v1.2.3-rc1, 1.2.3-rc1
+main 分支   → latest, sha-<commit-hash>
+其他分支    → <branch-name>, sha-<commit-hash>
+```
 
 ## 🎧 后台服务
 

@@ -246,45 +246,89 @@ jobs:
         sarif_file: 'trivy-results.sarif'
 
   # ============================================
-  # 部署到测试环境
+  # 镜像发布和标签管理
   # ============================================
-  deploy-staging:
-    name: 🚀 部署到测试环境
+  publish-images:
+    name: 🐳 发布 Docker 镜像
     runs-on: ubuntu-latest
-    needs: docker-build
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment:
-      name: staging
-      url: https://staging.castmind.example.com
+    needs: [unit-tests, integration-tests]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    
+    permissions:
+      contents: read
+      packages: write
     
     steps:
     - name: 📥 检出代码
       uses: actions/checkout@v4
     
-    - name: 🔐 配置 SSH
-      uses: webfactory/ssh-agent@v0.9.0
+    - name: 🐳 设置 Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: 🔐 登录到容器注册表
+      uses: docker/login-action@v3
       with:
-        ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: 🚀 部署到测试服务器
-      env:
-        DEPLOY_HOST: ${{ secrets.STAGING_HOST }}
-        DEPLOY_USER: ${{ secrets.STAGING_USER }}
-      run: |
-        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
-          cd /opt/castmind-staging
-          git pull origin develop
-          docker-compose pull
-          docker-compose up -d --build
-          docker system prune -f
-        EOF
+    - name: 🏷️ 提取元数据
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=tag
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
     
-    - name: 🏥 健康检查
-      run: |
-        sleep 30  # 等待服务启动
-        curl -f https://staging.castmind.example.com/api/v1/health || exit 1
+    - name: 🐳 构建并推送生产镜像
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+        target: production
     
-    - name: 📧 发送部署通知
+    - name: 🐳 构建并推送开发镜像
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+        target: development
+    
+    - name: 📊 镜像扫描 (Trivy)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: 📁 上传安全扫描报告
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-scan-report
+        path: trivy-results.sarif
+        retention-days: 30
+    
+    - name: 🚨 上传安全扫描结果到 GitHub
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: 📧 发送镜像发布通知
       if: success()
       uses: dawidd6/action-send-mail@v3
       with:
@@ -292,98 +336,22 @@ jobs:
         server_port: 465
         username: ${{ secrets.MAIL_USERNAME }}
         password: ${{ secrets.MAIL_PASSWORD }}
-        subject: "✅ CastMind 测试环境部署成功"
+        subject: "✅ CastMind Docker 镜像发布成功"
         to: ${{ secrets.NOTIFICATION_EMAIL }}
         from: CastMind CI/CD <ci@castmind.example.com>
         body: |
-          🎉 CastMind 测试环境部署成功！
+          🎉 CastMind Docker 镜像发布成功！
           
-          分支: ${{ github.ref }}
+          分支/标签: ${{ github.ref }}
           提交: ${{ github.sha }}
           时间: $(date)
           
-          查看详情: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          
-          服务地址: https://staging.castmind.example.com
-
-  # ============================================
-  # 部署到生产环境
-  # ============================================
-  deploy-production:
-    name: 🚀 部署到生产环境
-    runs-on: ubuntu-latest
-    needs: docker-build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: production
-      url: https://castmind.example.com
-    
-    steps:
-    - name: 📥 检出代码
-      uses: actions/checkout@v4
-    
-    - name: 🔐 配置 SSH
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
-    
-    - name: 🏷️ 创建 Git 标签
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        TAG_NAME=${GITHUB_REF#refs/tags/}
-        git tag -a "deploy-$TAG_NAME" -m "Deployed to production $TAG_NAME"
-        git push origin "deploy-$TAG_NAME"
-    
-    - name: 🚀 部署到生产服务器
-      env:
-        DEPLOY_HOST: ${{ secrets.PRODUCTION_HOST }}
-        DEPLOY_USER: ${{ secrets.PRODUCTION_USER }}
-      run: |
-        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
-          cd /opt/castmind-production
-          git pull origin main
-          docker-compose pull
-          docker-compose up -d --build
-          docker system prune -f
-          # 备份数据库
-          docker exec castmind-postgres pg_dump -U castmind castmind > /backups/castmind_$(date +%Y%m%d_%H%M%S).sql
-          # 保留最近7天的备份
-          find /backups -name "castmind_*.sql" -mtime +7 -delete
-        EOF
-    
-    - name: 🏥 健康检查
-      run: |
-        sleep 60  # 等待服务启动
-        curl -f https://castmind.example.com/api/v1/health || exit 1
-    
-    - name: 📊 性能测试
-      run: |
-        # 简单的性能测试
-        ab -n 100 -c 10 https://castmind.example.com/api/v1/health || true
-    
-    - name: 📧 发送生产部署通知
-      if: success()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.gmail.com
-        server_port: 465
-        username: ${{ secrets.MAIL_USERNAME }}
-        password: ${{ secrets.MAIL_PASSWORD }}
-        subject: "🚀 CastMind 生产环境部署成功"
-        to: ${{ secrets.NOTIFICATION_EMAIL }}
-        from: CastMind CI/CD <ci@castmind.example.com>
-        body: |
-          🎉 CastMind 生产环境部署成功！
-          
-          版本: ${{ github.ref }}
-          提交: ${{ github.sha }}
-          时间: $(date)
+          发布的镜像标签:
+          ${{ steps.meta.outputs.tags }}
           
           查看详情: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           
-          服务地址: https://castmind.example.com
-          
-          请进行最终验证。
+          镜像仓库: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
   # ============================================
   # 清理工作流
