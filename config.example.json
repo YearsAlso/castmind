@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "environment": "development",
+  "debug": true,
+  "timezone": "Asia/Shanghai",
+  
+  "database": {
+    "sqlite_path": "data/castmind.db",
+    "postgres_host": "localhost",
+    "postgres_port": 5432,
+    "postgres_db": "castmind",
+    "postgres_user": "castmind",
+    "postgres_password": "castmind123",
+    "redis_host": "localhost",
+    "redis_port": 6379,
+    "redis_password": "",
+    "redis_db": 0,
+    "pool_size": 10,
+    "pool_recycle": 3600,
+    "pool_timeout": 30
+  },
+  
+  "ai": {
+    "deepseek_api_key": "your_deepseek_api_key_here",
+    "deepseek_base_url": "https://api.deepseek.com",
+    "deepseek_model": "deepseek-chat",
+    "openai_api_key": "your_openai_api_key_here",
+    "openai_base_url": "https://api.openai.com/v1",
+    "openai_model": "gpt-3.5-turbo",
+    "local_model_path": "",
+    "local_model_device": "cpu",
+    "max_tokens": 1000,
+    "temperature": 0.7,
+    "timeout": 30,
+    "retry_count": 3
+  },
+  
+  "podcast": {
+    "rss_timeout": 30,
+    "rss_cache_ttl": 3600,
+    "rss_max_items": 50,
+    "audio_download_timeout": 300,
+    "audio_max_size_mb": 100,
+    "audio_supported_formats": ["mp3", "m4a", "wav", "flac", "ogg"],
+    "transcription_language": "auto",
+    "transcription_model": "base",
+    "transcription_device": "cpu",
+    "summary_prompt_template": "请总结以下播客内容：\\n\\n{transcript}\\n\\n请提供:\\n1. 3-5个关键观点\\n2. 主要内容摘要\\n3. 听众可能感兴趣的点\\n4. 使用{language}回复",
+    "output_dir": "data/output",
+    "keep_original_audio": false,
+    "max_output_files": 1000
+  },
+  
+  "api": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workers": 4,
+    "api_key": "your_api_key_here",
+    "cors_origins": ["*"],
+    "rate_limit_per_minute": 60,
+    "enable_docs": true,
+    "docs_path": "/api/docs",
+    "log_level": "info",
+    "access_log": true,
+    "enable_websocket": true,
+    "websocket_ping_interval": 30
+  },
+  
+  "worker": {
+    "rss_parser_count": 2,
+    "audio_downloader_count": 3,
+    "transcription_worker_count": 2,
+    "ai_processor_count": 2,
+    "file_generator_count": 2,
+    "max_queue_size": 1000,
+    "queue_timeout": 300,
+    "max_retries": 3,
+    "retry_delay": 60,
+    "monitor_interval": 30,
+    "health_check_interval": 60
+  },
+  
+  "storage": {
+    "data_dir": "data",
+    "backup_dir": "data/backups",
+    "backup_retention_days": 7,
+    "backup_schedule": "0 3 * * *",
+    "cleanup_enabled": true,
+    "cleanup_max_age_days": 30,
+    "cleanup_schedule": "0 4 * * *",
+    "cache_dir": "data/cache",
+    "cache_max_size_mb": 1024,
+    "cache_ttl": 86400
+  },
+  
+  "monitoring": {
+    "enable_prometheus": true,
+    "prometheus_port": 9090,
+    "log_file": "logs/castmind.log",
+    "log_max_size_mb": 100,
+    "log_backup_count": 5,
+    "enable_alerts": false,
+    "alert_email": "",
+    "alert_webhook": "",
+    "monitor_cpu": true,
+    "monitor_memory": true,
+    "monitor_disk": true,
+    "monitor_network": true
+  },
+  
+  "created_at": "2026-02-20T00:00:00",
+  "updated_at": "2026-02-20T00:00:00"
+}
