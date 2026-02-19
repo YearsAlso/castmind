@@ -25,7 +25,7 @@ class PodcastEpisode:
     duration: Optional[str] = None  # 时长（秒或HH:MM:SS格式）
     file_size: Optional[int] = None  # 文件大小（字节）
     guid: Optional[str] = None  # 唯一标识符
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
@@ -51,11 +51,11 @@ class PodcastInfo:
     image_url: Optional[str] = None
     categories: List[str] = None
     last_updated: Optional[datetime] = None
-    
+
     def __post_init__(self):
         if self.categories is None:
             self.categories = []
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
@@ -73,7 +73,7 @@ class PodcastInfo:
 
 class RSSParser:
     """RSS解析器"""
-    
+
     def __init__(self, timeout: int = 30, user_agent: str = None):
         """
         初始化RSS解析器
@@ -86,7 +86,7 @@ class RSSParser:
         self.user_agent = user_agent or (
             "Mozilla/5.0 (compatible; CastMind/1.0; +https://github.com/YearsAlso/castmind)"
         )
-        
+
     def parse_feed(self, feed_url: str) -> Optional[PodcastInfo]:
         """
         解析RSS feed，返回播客信息
@@ -100,47 +100,47 @@ class RSSParser:
         try:
             # 设置请求头
             headers = {'User-Agent': self.user_agent}
-            
+
             # 下载并解析feed
             response = requests.get(feed_url, headers=headers, timeout=self.timeout)
             response.raise_for_status()
-            
+
             # 使用feedparser解析
             feed = feedparser.parse(response.content)
-            
+
             if feed.bozo:  # 解析错误
                 logger.warning(f"RSS解析错误: {feed.bozo_exception}")
                 return None
-            
+
             # 提取播客信息
             return self._extract_podcast_info(feed, feed_url)
-            
+
         except requests.RequestException as e:
             logger.error(f"下载RSS feed失败: {e}")
             return None
         except Exception as e:
             logger.error(f"解析RSS feed失败: {e}")
             return None
-    
+
     def _extract_podcast_info(self, feed: feedparser.FeedParserDict, feed_url: str) -> PodcastInfo:
         """从feed中提取播客信息"""
         channel = feed.feed
-        
+
         # 处理发布时间
         last_updated = None
         if hasattr(channel, 'updated_parsed') and channel.updated_parsed:
             last_updated = datetime(*channel.updated_parsed[:6])
-        
+
         # 处理分类
         categories = []
         if hasattr(channel, 'tags'):
             categories = [tag.term for tag in channel.tags if hasattr(tag, 'term')]
-        
+
         # 处理图片
         image_url = None
         if hasattr(channel, 'image') and hasattr(channel.image, 'href'):
             image_url = channel.image.href
-        
+
         return PodcastInfo(
             title=channel.title if hasattr(channel, 'title') else '未知播客',
             description=channel.description if hasattr(channel, 'description') else '',
@@ -152,7 +152,7 @@ class RSSParser:
             categories=categories,
             last_updated=last_updated
         )
-    
+
     def get_episodes(self, feed_url: str, limit: int = 10) -> List[PodcastEpisode]:
         """
         获取播客剧集列表
@@ -168,28 +168,28 @@ class RSSParser:
             headers = {'User-Agent': self.user_agent}
             response = requests.get(feed_url, headers=headers, timeout=self.timeout)
             response.raise_for_status()
-            
+
             feed = feedparser.parse(response.content)
-            
+
             if feed.bozo:
                 logger.warning(f"RSS解析错误: {feed.bozo_exception}")
                 return []
-            
+
             episodes = []
             for entry in feed.entries[:limit]:
                 episode = self._extract_episode_info(entry)
                 if episode:
                     episodes.append(episode)
-            
+
             return episodes
-            
+
         except requests.RequestException as e:
             logger.error(f"下载RSS feed失败: {e}")
             return []
         except Exception as e:
             logger.error(f"解析剧集失败: {e}")
             return []
-    
+
     def _extract_episode_info(self, entry: feedparser.FeedParserDict) -> Optional[PodcastEpisode]:
         """从feed条目中提取剧集信息"""
         try:
@@ -197,7 +197,7 @@ class RSSParser:
             audio_url = None
             file_size = None
             duration = None
-            
+
             # 检查enclosures
             if hasattr(entry, 'enclosures'):
                 for enclosure in entry.enclosures:
@@ -209,29 +209,29 @@ class RSSParser:
                             except (ValueError, TypeError):
                                 pass
                         break
-            
+
             # 如果没有找到enclosure，检查links
             if not audio_url and hasattr(entry, 'links'):
                 for link in entry.links:
                     if link.type.startswith('audio/'):
                         audio_url = link.href
                         break
-            
+
             # 如果没有音频链接，跳过这个剧集
             if not audio_url:
                 return None
-            
+
             # 处理发布时间
             published = None
             if hasattr(entry, 'published_parsed') and entry.published_parsed:
                 published = datetime(*entry.published_parsed[:6])
             elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
                 published = datetime(*entry.updated_parsed[:6])
-            
+
             # 处理时长
             if hasattr(entry, 'itunes_duration'):
                 duration = entry.itunes_duration
-            
+
             return PodcastEpisode(
                 title=entry.title if hasattr(entry, 'title') else '未知标题',
                 url=audio_url,
@@ -241,11 +241,11 @@ class RSSParser:
                 file_size=file_size,
                 guid=entry.get('id') or entry.get('guid')
             )
-            
+
         except Exception as e:
             logger.error(f"提取剧集信息失败: {e}")
             return None
-    
+
     def validate_feed(self, feed_url: str) -> Dict[str, Any]:
         """
         验证RSS feed
@@ -260,13 +260,13 @@ class RSSParser:
             headers = {'User-Agent': self.user_agent}
             response = requests.get(feed_url, headers=headers, timeout=self.timeout)
             response.raise_for_status()
-            
+
             feed = feedparser.parse(response.content)
-            
+
             # 检查基本信息
             has_title = hasattr(feed.feed, 'title')
             has_entries = len(feed.entries) > 0
-            
+
             # 检查音频链接
             has_audio = False
             if has_entries:
@@ -274,7 +274,7 @@ class RSSParser:
                     if self._extract_episode_info(entry):
                         has_audio = True
                         break
-            
+
             return {
                 'valid': not feed.bozo,
                 'has_title': has_title,
@@ -285,7 +285,7 @@ class RSSParser:
                 'content_type': response.headers.get('Content-Type', ''),
                 'status_code': response.status_code
             }
-            
+
         except requests.RequestException as e:
             return {
                 'valid': False,
@@ -303,10 +303,10 @@ class RSSParser:
 def test_rss_feed(feed_url: str = "https://feeds.fireside.fm/bibleinayear/rss"):
     """测试RSS解析功能"""
     parser = RSSParser()
-    
+
     print(f"测试RSS feed: {feed_url}")
     print("=" * 60)
-    
+
     # 验证feed
     validation = parser.validate_feed(feed_url)
     print(f"验证结果: {'有效' if validation['valid'] else '无效'}")
@@ -314,7 +314,7 @@ def test_rss_feed(feed_url: str = "https://feeds.fireside.fm/bibleinayear/rss"):
         print(f"错误: {validation['error']}")
     print(f"条目数量: {validation['entry_count']}")
     print(f"包含音频: {validation['has_audio']}")
-    
+
     if validation['valid']:
         # 获取播客信息
         podcast_info = parser.parse_feed(feed_url)
@@ -324,7 +324,7 @@ def test_rss_feed(feed_url: str = "https://feeds.fireside.fm/bibleinayear/rss"):
             print(f"  描述: {podcast_info.description[:100]}...")
             print(f"  作者: {podcast_info.author or '未知'}")
             print(f"  分类: {', '.join(podcast_info.categories) if podcast_info.categories else '无'}")
-        
+
         # 获取剧集列表
         episodes = parser.get_episodes(feed_url, limit=3)
         print(f"\n最新剧集 ({len(episodes)}个):")
@@ -340,6 +340,6 @@ def test_rss_feed(feed_url: str = "https://feeds.fireside.fm/bibleinayear/rss"):
 if __name__ == "__main__":
     # 配置日志
     logging.basicConfig(level=logging.INFO)
-    
+
     # 测试
     test_rss_feed()
