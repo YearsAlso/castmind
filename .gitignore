@@ -72,6 +72,8 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+test.db
+*.db-journal
 
 # Logs
 *.log
@@ -104,3 +106,26 @@ frontend/build/
 # System files
 .DS_Store
 Thumbs.db
+
+# Test files
+.coverage
+htmlcov/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
