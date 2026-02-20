@@ -16,22 +16,45 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Virtual Environment
-.venv/
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
 env/
+venv/
 ENV/
 env.bak/
 venv.bak/
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
@@ -45,59 +68,64 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Logs
-logs/
-*.log
-
 # Database
 *.db
 *.sqlite
 *.sqlite3
+test.db
+*.db-journal
+
+# Logs
+*.log
+logs/
+
+# UV
+uv.lock
+
+# Data
+data/castmind.db
+data/logs/*.log
+
+# Frontend
+node_modules/
+dist/
+build/
+*.tgz
+frontend/node_modules/
+frontend/dist/
+frontend/build/
 
 # Temporary files
-/tmp/
 *.tmp
 *.temp
 
-# Audio files
-*.mp3
-*.wav
-*.m4a
-*.ogg
-*.flac
+# Backup files
+*.bak
+*.backup
 
-# Config secrets
-config/.env
-.env
-.env.local
-.env.*.local
-!.env.example
+# System files
+.DS_Store
+Thumbs.db
 
-# Data files
-data/podcasts/
-data/transcripts/
-data/knowledge/
-
-# Outputs
-outputs/
-
-# Test coverage
+# Test files
 .coverage
 htmlcov/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
-# PyCharm
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
 .idea/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# Pytype (Python type checker)
-.pytype/
+*.swp
+*.swo
+*~

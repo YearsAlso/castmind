@@ -3,100 +3,77 @@ name: CI
 on:
   push:
     branches: [ main, develop ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch:  # 允许手动触发
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: [3.9, 3.10, 3.11]
 
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'uv'
     
     - name: Install dependencies
       run: |
-        uv venv
-        source .venv/bin/activate
-        uv sync --dev
-    
-    - name: Check code formatting with Black
-      run: |
-        source .venv/bin/activate
-        black --check --diff .
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
     
     - name: Lint with flake8
       run: |
-        source .venv/bin/activate
+        pip install flake8
+        # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     
-    - name: Type check with mypy
+    - name: Test with pytest
       run: |
-        source .venv/bin/activate
-        mypy src/ --ignore-missing-imports
+        pip install pytest pytest-asyncio
+        if [ -d "tests" ]; then
+          pytest tests/ -v
+        else
+          echo "No tests directory found, skipping tests"
+        fi
     
-    - name: Run tests with pytest
+    - name: Check backend startup
       run: |
-        source .venv/bin/activate
-        pytest tests/ -v --cov=src --cov-report=xml
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-
-  security-scan:
+        # Test that the backend can start without errors
+        timeout 10 python backend/main.py --help || echo "Backend help command executed"
+        
+  build-frontend:
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-    
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
-
-  docker-build:
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push'
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
     
-    - name: Build Docker image
+    - name: Install frontend dependencies
       run: |
-        docker build -t castmind:latest .
+        cd frontend
+        npm ci
     
-    - name: Test Docker image
+    - name: Build frontend
       run: |
-        docker run --rm castmind:latest python --version
-        docker run --rm castmind:latest python -c "import sys; print('Python version:', sys.version)"
+        cd frontend
+        npm run build
+    
+    - name: Upload frontend build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/dist/

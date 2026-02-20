@@ -163,11 +163,65 @@ graph TB
     Q --> F
 ```
 
+### 🎨 前端管理界面（新增）
+
+CastMind 现在包含一个现代化的 Web 管理界面：
+
+- **技术栈**: React 18 + TypeScript + Vite + Tailwind CSS
+- **功能**:
+  - 📊 **仪表板**: 系统概览、统计卡片、订阅源状态
+  - 📰 **订阅源管理**: CRUD 操作、手动抓取、状态筛选
+  - 📝 **文章管理**: 文章列表、搜索筛选、阅读状态管理
+  - ⚙️ **系统管理**: 服务监控、任务调度、配置管理
+- **响应式设计**: 支持移动端、平板和桌面端
+- **API 集成**: 通过代理连接到后端 FastAPI 服务
+
+**启动前端**:
+```bash
+cd frontend
+npm install  # 或 yarn/pnpm
+npm run dev  # 开发模式: http://localhost:3000
+```
+
+### 🎨 前端管理界面（新增）
+
+CastMind 现在包含一个现代化的 Web 管理界面：
+
+- **技术栈**: React 18 + TypeScript + Vite + Tailwind CSS
+- **功能**:
+  - 📊 **仪表板**: 系统概览、统计卡片、订阅源状态
+  - 📰 **订阅源管理**: CRUD 操作、手动抓取、状态筛选
+  - 📝 **文章管理**: 文章列表、搜索筛选、阅读状态管理
+  - ⚙️ **系统管理**: 服务监控、任务调度、配置管理
+- **响应式设计**: 支持移动端、平板和桌面端
+- **API 集成**: 通过代理连接到后端 FastAPI 服务
+
+**启动前端**:
+```bash
+cd frontend
+npm install  # 或 yarn/pnpm
+npm run dev  # 开发模式: http://localhost:3000
+```
 ### 目录结构
 
 ```
 castmind/
 ├── castmind.py              # 主入口点
+├── frontend/               # 🎨 前端管理界面（新增）
+│   ├── src/               # 前端源代码
+│   │   ├── pages/        # 页面组件
+│   │   ├── components/   # 可复用组件
+│   │   ├── hooks/       # 自定义 Hooks
+│   │   ├── api/         # API 接口定义
+│   │   ├── App.tsx      # 主应用组件
+│   │   ├── main.tsx     # 应用入口
+│   │   └── index.css    # 全局样式
+│   ├── public/          # 静态资源
+│   ├── package.json     # 依赖配置
+│   ├── vite.config.ts   # Vite 配置
+│   ├── tsconfig.json    # TypeScript 配置
+│   ├── tailwind.config.js # Tailwind CSS 配置
+│   └── README.md        # 前端文档
 ├── src/                     # 源代码
 │   ├── core/               # 核心模块
 │   │   ├── config.py       # 配置管理
