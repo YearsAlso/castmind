@@ -93,6 +93,31 @@ class TaskScheduler:
             )
             
             db.add(article)
+            db.flush()  # 获取 article.id
+            
+            # 进行 AI 分析
+            try:
+                analysis_result = self.ai_service.analyze_article(
+                    title=article.title,
+                    content=article.content
+                )
+                
+                # 更新文章的分析结果
+                if analysis_result:
+                    article.summary = analysis_result.get("summary", article.summary)
+                    article.keywords = analysis_result.get("keywords", "")
+                    article.sentiment = analysis_result.get("sentiment", "")
+                    article.key_points = analysis_result.get("key_points", "")
+                    article.business_insights = analysis_result.get("business_insights", "")
+                    article.technical_points = analysis_result.get("technical_points", "")
+                    article.action_items = analysis_result.get("action_items", "")
+                    
+                    logger.info(f"文章 AI 分析完成: {article.title}")
+                
+            except Exception as e:
+                logger.warning(f"文章 AI 分析失败 (ID: {article.id}): {e}")
+                # 继续处理其他文章
+            
             new_articles += 1
         
         # 更新订阅源信息
