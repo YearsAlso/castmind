@@ -1,31 +1,38 @@
 """
-RSS 解析服务
+RSS 解析服务（支持 RSSHub）
 """
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import feedparser
 from datetime import datetime
+
+from .rsshub_service import RSSHubService
 
 logger = logging.getLogger(__name__)
 
 class RSSService:
-    """RSS 解析服务类"""
+    """RSS 解析服务类（支持 RSSHub）"""
     
     @staticmethod
     def parse_feed(url: str) -> Optional[Dict]:
         """
-        解析 RSS/Atom 订阅源
+        解析 RSS/Atom 订阅源（支持 RSSHub）
         
         Args:
-            url: RSS/Atom 订阅源 URL
+            url: RSS/Atom 订阅源 URL 或 RSSHub 路由
             
         Returns:
             解析后的订阅源信息，或 None 如果解析失败
         """
         try:
-            logger.info(f"开始解析 RSS 订阅源: {url}")
+            # 检查是否为 RSSHub URL
+            if RSSHubService.is_rsshub_url(url):
+                logger.info(f"检测到 RSSHub URL，使用 RSSHub 解析器: {url}")
+                return RSSHubService.parse_rsshub_feed(url)
             
-            # 解析 RSS 订阅源
+            logger.info(f"开始解析标准 RSS 订阅源: {url}")
+            
+            # 解析标准 RSS 订阅源
             feed = feedparser.parse(url)
             
             if feed.bozo:
@@ -33,6 +40,7 @@ class RSSService:
             
             # 提取订阅源信息
             feed_info = {
+                "source_type": "standard",
                 "title": feed.feed.get("title", "未知标题"),
                 "description": feed.feed.get("description", ""),
                 "link": feed.feed.get("link", url),
@@ -112,17 +120,23 @@ class RSSService:
         return articles
     
     @staticmethod
-    def validate_feed_url(url: str) -> bool:
+    def validate_feed_url(url: str) -> Tuple[bool, str]:
         """
-        验证 RSS 订阅源 URL 是否有效
+        验证 RSS 订阅源 URL 是否有效（支持 RSSHub）
         
         Args:
-            url: RSS/Atom 订阅源 URL
+            url: RSS/Atom 订阅源 URL 或 RSSHub 路由
             
         Returns:
-            是否有效
+            (是否有效, 错误信息)
         """
         try:
+            # 检查是否为 RSSHub URL
+            if RSSHubService.is_rsshub_url(url):
+                logger.info(f"检测到 RSSHub URL，使用 RSSHub 验证器: {url}")
+                return RSSHubService.validate_rsshub_url(url)
+            
+            # 验证标准 RSS 订阅源
             feed = feedparser.parse(url)
             
             # 基本验证
@@ -130,21 +144,74 @@ class RSSService:
                 # 忽略一些无关紧要的警告
                 pass
             elif feed.bozo:
-                logger.warning(f"RSS 验证警告: {feed.bozo_exception}")
-                return False
+                warning_msg = f"RSS 验证警告: {feed.bozo_exception}"
+                logger.warning(warning_msg)
+                return False, warning_msg
             
             # 检查是否有基本内容
             if not hasattr(feed, 'feed') or not feed.feed:
-                logger.warning("RSS 验证失败: 无 feed 内容")
-                return False
+                error_msg = "RSS 验证失败: 无 feed 内容"
+                logger.warning(error_msg)
+                return False, error_msg
             
             if not feed.entries:
-                logger.warning("RSS 验证失败: 无文章条目")
-                return False
+                error_msg = "RSS 验证失败: 无文章条目"
+                logger.warning(error_msg)
+                return False, error_msg
             
             logger.info(f"RSS 订阅源验证成功: {url}")
-            return True
+            return True, "验证成功"
             
         except Exception as e:
-            logger.error(f"RSS 验证失败: {url}, 错误: {e}")
-            return False
+            error_msg = f"RSS 验证失败: {e}"
+            logger.error(error_msg)
+            return False, error_msg
+    
+    @staticmethod
+    def get_rsshub_examples() -> List[Dict]:
+        """
+        获取 RSSHub 示例订阅源
+        
+        Returns:
+            示例订阅源列表
+        """
+        return RSSHubService.get_rsshub_examples()
+    
+    @staticmethod
+    def search_rsshub_routes(query: str) -> List[Dict]:
+        """
+        搜索 RSSHub 路由
+        
+        Args:
+            query: 搜索关键词
+            
+        Returns:
+            匹配的路由列表
+        """
+        return RSSHubService.search_rsshub_routes(query)
+    
+    @staticmethod
+    def is_rsshub_url(url: str) -> bool:
+        """
+        判断是否为 RSSHub URL
+        
+        Args:
+            url: 要检查的 URL
+            
+        Returns:
+            是否为 RSSHub URL
+        """
+        return RSSHubService.is_rsshub_url(url)
+    
+    @staticmethod
+    def normalize_rsshub_url(url: str) -> str:
+        """
+        标准化 RSSHub URL
+        
+        Args:
+            url: 原始 URL
+            
+        Returns:
+            标准化后的 URL
+        """
+        return RSSHubService.normalize_rsshub_url(url)

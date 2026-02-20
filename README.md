@@ -551,12 +551,34 @@ CastMind 支持各种 RSS 订阅源，以下是一些推荐的优质内容源：
 
 ### 🎯 如何添加订阅源
 
+#### 支持的类型：
+1. **标准 RSS/Atom 订阅源** - 任何标准的 RSS 或 Atom 格式
+2. **RSSHub 订阅源** - 支持 RSSHub 的所有路由（Twitter、GitHub、B站等）
+
 #### 通过 Web 界面
 1. 访问 CastMind 管理界面 (http://localhost:3000)
 2. 导航到 "订阅源管理" 页面
 3. 点击 "添加订阅源" 按钮
-4. 输入 RSS URL 和相关信息
+4. 输入 RSS URL 或 RSSHub 路由
 5. 点击保存，系统会自动开始抓取
+
+#### RSSHub 示例：
+```bash
+# Twitter 用户
+https://rsshub.app/twitter/user/elonmusk
+
+# GitHub 仓库
+https://rsshub.app/github/repos/vuejs/vue
+
+# B站 UP 主
+https://rsshub.app/bilibili/user/video/208259
+
+# Hacker News
+https://rsshub.app/hackernews
+
+# 知乎用户
+https://rsshub.app/zhihu/people/activities/zhouyuan
+```
 
 #### 通过命令行
 ```bash

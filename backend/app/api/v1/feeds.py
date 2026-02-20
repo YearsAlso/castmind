@@ -142,3 +142,95 @@ async def get_feed_articles(
         "total": len(articles),
         "articles": articles[skip:skip+limit]
     }
+
+# RSSHub 相关端点
+@router.get("/rsshub/examples")
+async def get_rsshub_examples():
+    """
+    获取 RSSHub 示例订阅源
+    """
+    from app.services.rss_service import RSSService
+    examples = RSSService.get_rsshub_examples()
+    return {
+        "total": len(examples),
+        "examples": examples
+    }
+
+@router.get("/rsshub/search")
+async def search_rsshub_routes(
+    query: str = Query(..., min_length=1, description="搜索关键词")
+):
+    """
+    搜索 RSSHub 路由
+    """
+    from app.services.rss_service import RSSService
+    results = RSSService.search_rsshub_routes(query)
+    return {
+        "query": query,
+        "total": len(results),
+        "results": results
+    }
+
+@router.post("/rsshub/validate")
+async def validate_rsshub_url(
+    url: str = Query(..., description="RSSHub URL 或路由")
+):
+    """
+    验证 RSSHub URL
+    """
+    from app.services.rss_service import RSSService
+    
+    # 检查是否为 RSSHub URL
+    if not RSSService.is_rsshub_url(url):
+        return {
+            "is_rsshub": False,
+            "valid": False,
+            "message": "不是有效的 RSSHub URL"
+        }
+    
+    # 验证 URL
+    is_valid, message = RSSService.validate_feed_url(url)
+    
+    return {
+        "is_rsshub": True,
+        "valid": is_valid,
+        "message": message,
+        "normalized_url": RSSService.normalize_rsshub_url(url) if is_valid else None
+    }
+
+@router.post("/rsshub/test-parse")
+async def test_parse_rsshub_url(
+    url: str = Query(..., description="RSSHub URL 或路由")
+):
+    """
+    测试解析 RSSHub URL
+    """
+    from app.services.rss_service import RSSService
+    
+    # 检查是否为 RSSHub URL
+    if not RSSService.is_rsshub_url(url):
+        raise HTTPException(
+            status_code=400, 
+            detail="不是有效的 RSSHub URL"
+        )
+    
+    # 解析订阅源
+    feed_info = RSSService.parse_feed(url)
+    
+    if not feed_info:
+        raise HTTPException(
+            status_code=400,
+            detail="无法解析 RSSHub 订阅源"
+        )
+    
+    return {
+        "url": url,
+        "normalized_url": RSSService.normalize_rsshub_url(url),
+        "feed_info": {
+            "title": feed_info.get("title"),
+            "description": feed_info.get("description"),
+            "source_type": feed_info.get("source_type", "unknown"),
+            "entry_count": len(feed_info.get("entries", [])),
+            "sample_entries": feed_info.get("entries", [])[:3]  # 返回前3条作为示例
+        }
+    }
