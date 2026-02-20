@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { 
-  Search, Filter, Eye, EyeOff, CheckCircle, Clock, 
-  Calendar, Hash, FileText, Copy, BookOpen, Star,
-  FileEdit, Template, Layout
+  Search, Filter, Eye, EyeOff, CheckCircle, 
+  Hash, Copy, BookOpen, Star, Layout
 } from 'lucide-react'
 
 const API_BASE = '/api/v1'
@@ -129,7 +128,6 @@ export default function Excerpts() {
   const [showTemplates, setShowTemplates] = useState(false)
   const [activeTemplate, setActiveTemplate] = useState(DEFAULT_TEMPLATES[0])
   const [customTemplate, setCustomTemplate] = useState('')
-  const [selectedExcerpts, setSelectedExcerpts] = useState<number[]>([])
   const pageSize = 20
 
   const queryClient = useQueryClient()
@@ -185,22 +183,6 @@ export default function Excerpts() {
     { id: 'processed', label: '已处理', count: stats?.processed || 0 },
   ]
 
-  const handleSelectExcerpt = (id: number) => {
-    setSelectedExcerpts(prev => 
-      prev.includes(id) 
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    )
-  }
-
-  const handleSelectAll = () => {
-    if (selectedExcerpts.length === filteredExcerpts?.length) {
-      setSelectedExcerpts([])
-    } else {
-      setSelectedExcerpts(filteredExcerpts?.map((e: any) => e.id) || [])
-    }
-  }
-
   const handleCopyTemplate = () => {
     navigator.clipboard.writeText(customTemplate || activeTemplate.template)
     alert('模板已复制到剪贴板')
@@ -228,7 +210,7 @@ export default function Excerpts() {
             onClick={() => setShowTemplates(!showTemplates)}
             className="btn btn-secondary flex items-center"
           >
-            <Template className="h-4 w-4 mr-2" />
+            <Layout className="h-4 w-4 mr-2" />
             {showTemplates ? '隐藏模板' : '文档模板'}
           </button>
         </div>
@@ -468,4 +450,22 @@ export default function Excerpts() {
       {/* 使用提示 */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex">
-          <div
+          <div className="flex-shrink-0">
+            <Star className="h-5 w-5 text-blue-400" />
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-blue-800">使用提示</h3>
+            <div className="mt-2 text-sm text-blue-700">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>使用文档模板功能可以自定义输出格式</li>
+                <li>关键词可以帮助你快速找到相关内容</li>
+                <li>定期清理已处理的摘录，保持列表整洁</li>
+                <li>点击"查看原文"图标可以访问原始内容</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
