@@ -485,6 +485,183 @@ services:
     restart: unless-stopped
 ```
 
+## 📡 推荐的 RSS 订阅源
+
+CastMind 支持各种 RSS 订阅源，以下是一些推荐的优质内容源：
+
+### 🎙️ 中文播客推荐
+
+#### 科技与创业
+- **科技早知道** - https://feeds.fireside.fm/techzao/rss
+- **硅谷101** - https://feeds.fireside.fm/silicon101/rss
+- **创业内幕** - https://feeds.fireside.fm/startupinsider/rss
+- **产品沉思录** - https://feeds.fireside.fm/pmthinking/rss
+
+#### 商业与投资
+- **商业就是这样** - https://feeds.fireside.fm/businesslike/rss
+- **疯投圈** - https://feeds.fireside.fm/fengtouquan/rss
+- **晚点聊** - https://feeds.fireside.fm/latechat/rss
+- **投资异类** - https://feeds.fireside.fm/investment/rss
+
+#### 知识与文化
+- **故事FM** - https://feeds.fireside.fm/storyfm/rss
+- **文化有限** - https://feeds.fireside.fm/culturelimited/rss
+- **忽左忽右** - https://feeds.fireside.fm/huzuohuyou/rss
+- **随机波动** - https://feeds.fireside.fm/randomvolatility/rss
+
+### 🌍 英文播客推荐
+
+#### Technology & Programming
+- **Software Engineering Daily** - https://softwareengineeringdaily.com/feed/podcast/
+- **The Changelog** - https://changelog.com/podcast/feed
+- **Syntax.fm** - https://feed.syntax.fm/rss
+- **React Podcast** - https://feeds.simplecast.com/JoR28o79
+
+#### Business & Startups
+- **The Tim Ferriss Show** - https://rss.art19.com/tim-ferriss-show
+- **How I Built This** - https://feeds.npr.org/510313/podcast.xml
+- **Masters of Scale** - https://rss.art19.com/masters-of-scale
+- **The Indicator from Planet Money** - https://feeds.npr.org/510325/podcast.xml
+
+#### News & Analysis
+- **The Daily** - https://feeds.simplecast.com/54nAGcIl
+- **Up First** - https://feeds.npr.org/510318/podcast.xml
+- **Today, Explained** - https://feeds.megaphone.fm/explained
+- **The Journal** - https://feeds.megaphone.fm/thejournal
+
+### 📰 新闻与资讯 RSS
+
+#### 综合新闻
+- **BBC News** - http://feeds.bbci.co.uk/news/rss.xml
+- **Reuters Top News** - http://feeds.reuters.com/reuters/topNews
+- **AP News** - https://feeds.apnews.com/apnews/topnews
+- **CNN Top Stories** - http://rss.cnn.com/rss/cnn_topstories.rss
+
+#### 科技新闻
+- **Hacker News** - https://news.ycombinator.com/rss
+- **TechCrunch** - https://techcrunch.com/feed/
+- **The Verge** - https://www.theverge.com/rss/index.xml
+- **Ars Technica** - http://feeds.arstechnica.com/arstechnica/index
+
+#### 开发者资讯
+- **GitHub Blog** - https://github.blog/feed/
+- **Stack Overflow Blog** - https://stackoverflow.blog/feed/
+- **Dev.to** - https://dev.to/feed
+- **CSS-Tricks** - https://css-tricks.com/feed/
+
+### 🎯 如何添加订阅源
+
+#### 通过 Web 界面
+1. 访问 CastMind 管理界面 (http://localhost:3000)
+2. 导航到 "订阅源管理" 页面
+3. 点击 "添加订阅源" 按钮
+4. 输入 RSS URL 和相关信息
+5. 点击保存，系统会自动开始抓取
+
+#### 通过命令行
+```bash
+# 添加单个订阅源
+python castmind.py subscribe --name "科技早知道" --url "https://feeds.fireside.fm/techzao/rss" --category "科技"
+
+# 批量添加订阅源
+python castmind.py subscribe-batch --file subscriptions.json
+
+# 订阅源配置文件示例 (subscriptions.json)
+[
+  {
+    "name": "科技早知道",
+    "url": "https://feeds.fireside.fm/techzao/rss",
+    "category": "科技",
+    "interval": 3600
+  },
+  {
+    "name": "商业就是这样",
+    "url": "https://feeds.fireside.fm/businesslike/rss",
+    "category": "商业",
+    "interval": 7200
+  }
+]
+```
+
+#### 通过 API
+```bash
+# 使用 curl 添加订阅源
+curl -X POST http://localhost:8000/api/v1/feeds \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "科技早知道",
+    "url": "https://feeds.fireside.fm/techzao/rss",
+    "category": "科技",
+    "interval": 3600
+  }'
+```
+
+### 🔧 订阅源管理技巧
+
+#### 1. 分类管理
+- 使用有意义的分类名称（如：科技、商业、文化、学习）
+- 定期整理和合并相似分类
+- 为每个分类设置不同的抓取频率
+
+#### 2. 抓取优化
+- **高频更新源**: 新闻类（1-2小时抓取一次）
+- **中频更新源**: 博客、周刊（6-12小时抓取一次）
+- **低频更新源**: 月刊、季刊（24小时抓取一次）
+
+#### 3. 质量控制
+- 定期检查订阅源状态
+- 移除长期失效的订阅源
+- 标记高质量内容源
+
+#### 4. 个性化推荐
+- 根据阅读历史推荐相似内容
+- 标记感兴趣的主题和作者
+- 设置关键词过滤
+
+### 📊 订阅源统计示例
+
+启动 CastMind 后，你可以在仪表板看到：
+- 📈 **活跃订阅源**: 显示所有正常工作的订阅源
+- 📰 **文章总数**: 所有订阅源抓取的文章数量
+- 🔄 **更新频率**: 每个订阅源的抓取状态
+- ⚡ **抓取性能**: 最近抓取的成功率和速度
+
+### ❓ 常见问题
+
+#### Q: 如何找到更多 RSS 订阅源？
+A: 可以使用以下方法：
+1. 在播客平台（小宇宙、Apple Podcasts）查找 RSS 链接
+2. 使用 RSS 搜索引擎（如：RSS.com、Feedly）
+3. 查看博客和新闻网站的底部或源代码中的 RSS 链接
+
+#### Q: 订阅源抓取失败怎么办？
+A: 检查以下问题：
+1. RSS URL 是否正确
+2. 网络连接是否正常
+3. 订阅源是否仍然有效
+4. 是否被网站限制访问
+
+#### Q: 如何备份我的订阅源列表？
+A: 使用导出功能：
+```bash
+# 导出订阅源列表
+python castmind.py export-feeds --format json --output feeds_backup.json
+
+# 导入订阅源列表
+python castmind.py import-feeds --file feeds_backup.json
+```
+
+#### Q: 可以订阅 YouTube 频道吗？
+A: 可以！使用 YouTube RSS 格式：
+```
+https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID
+```
+将 `CHANNEL_ID` 替换为实际的 YouTube 频道 ID。
+
+---
+
+**💡 提示**: 建议从少量高质量的订阅源开始，逐渐增加。定期清理不再感兴趣的订阅源，保持信息流的质量。
+
 ## 📊 系统性能指标
 
 ### 处理能力

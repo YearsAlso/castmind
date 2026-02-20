@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { BarChart3, Rss, BookOpen, Clock, TrendingUp, AlertCircle } from 'lucide-react'
+import { Rss, BookOpen, Clock, TrendingUp, AlertCircle } from 'lucide-react'
 
 const API_BASE = '/api/v1'
 
@@ -10,9 +10,24 @@ export default function Dashboard() {
     queryFn: () => axios.get(`${API_BASE}/system/stats`).then(res => res.data),
   })
 
+  const { data: trends } = useQuery({
+    queryKey: ['trends'],
+    queryFn: () => axios.get(`${API_BASE}/system/trends`).then(res => res.data),
+  })
+
   const { data: feeds } = useQuery({
     queryKey: ['feeds'],
     queryFn: () => axios.get(`${API_BASE}/feeds`).then(res => res.data),
+  })
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => axios.get(`${API_BASE}/system/health`).then(res => res.data),
+  })
+
+  const { data: config } = useQuery({
+    queryKey: ['config'],
+    queryFn: () => axios.get(`${API_BASE}/system/config`).then(res => res.data),
   })
 
   if (isLoading) {
@@ -28,28 +43,28 @@ export default function Dashboard() {
       title: '订阅源',
       value: stats?.feeds?.total || 0,
       icon: <Rss className="h-6 w-6 text-primary-600" />,
-      change: '+2',
+      change: trends?.feeds?.change ? (trends.feeds.change > 0 ? `+${trends.feeds.change}` : trends.feeds.change.toString()) : '--',
       description: '活跃订阅源',
     },
     {
       title: '文章总数',
       value: stats?.articles?.total || 0,
       icon: <BookOpen className="h-6 w-6 text-green-600" />,
-      change: '+24',
+      change: trends?.articles?.weekly ? `+${trends.articles.weekly}` : '--',
       description: '本周新增',
     },
     {
       title: '未读文章',
       value: stats?.articles?.unread || 0,
       icon: <AlertCircle className="h-6 w-6 text-yellow-600" />,
-      change: '-8',
-      description: '比昨天减少',
+      change: trends?.unread_articles?.change ? (trends.unread_articles.change > 0 ? `+${trends.unread_articles.change}` : trends.unread_articles.change.toString()) : '--',
+      description: '比昨天变化',
     },
     {
       title: '任务执行',
       value: stats?.tasks?.total || 0,
       icon: <Clock className="h-6 w-6 text-blue-600" />,
-      change: '98%',
+      change: `${trends?.tasks?.success_rate?.toFixed(1) || 0}%`,
       description: '成功率',
     },
   ]
@@ -107,23 +122,23 @@ export default function Dashboard() {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600">后端版本</span>
-              <span className="font-medium">v1.0.0</span>
+              <span className="font-medium">{health?.version || 'v1.0.0'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">数据库</span>
-              <span className="font-medium">SQLite</span>
+              <span className="font-medium">{health?.database || 'SQLite'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">定时任务</span>
-              <span className="font-medium">运行中</span>
+              <span className="font-medium">{health?.scheduler || '未知'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">AI 分析</span>
-              <span className="font-medium">可用</span>
+              <span className="font-medium">{config?.ai_service_enabled ? '可用' : '禁用'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">最后更新</span>
-              <span className="font-medium">刚刚</span>
+              <span className="font-medium">{health?.timestamp ? new Date(health.timestamp).toLocaleTimeString() : '--'}</span>
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import axios from 'axios'
 import { Home, Rss, BookOpen, Settings, BarChart3 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Feeds from './pages/Feeds'
-import Articles from './pages/Articles'
+import Excerpts from './pages/Excerpts'
 import System from './pages/System'
 
 const API_BASE = '/api/v1'
@@ -19,7 +19,7 @@ function App() {
   const navItems = [
     { path: '/', label: '仪表板', icon: <Home size={20} /> },
     { path: '/feeds', label: '订阅源', icon: <Rss size={20} /> },
-    { path: '/articles', label: '文章', icon: <BookOpen size={20} /> },
+    { path: '/excerpts', label: '摘录', icon: <BookOpen size={20} /> },
     { path: '/system', label: '系统', icon: <Settings size={20} /> },
   ]
 
@@ -73,7 +73,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/feeds" element={<Feeds />} />
-          <Route path="/articles" element={<Articles />} />
+          <Route path="/excerpts" element={<Excerpts />} />
           <Route path="/system" element={<System />} />
         </Routes>
       </main>
