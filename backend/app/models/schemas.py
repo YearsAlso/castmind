@@ -87,3 +87,10 @@ class HealthResponse(BaseModel):
     version: str
     database: str
     timestamp: str
+
+class TrendsResponse(BaseModel):
+    """趋势统计响应模式"""
+    feeds: dict
+    articles: dict
+    unread_articles: dict
+    tasks: dict

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.database import Feed, Article
-from app.models.schemas import HealthResponse, StatsResponse
+from app.models.schemas import HealthResponse, StatsResponse, TrendsResponse
 
 router = APIRouter()
 
@@ -167,3 +167,87 @@ async def get_version():
         "api_version": "v1",
         "timestamp": datetime.now().isoformat()
     }
+
+@router.get("/trends", response_model=TrendsResponse)
+async def get_trends(
+    db: Session = Depends(get_db)
+):
+    """
+    获取时间趋势统计
+    """
+    from datetime import datetime, timedelta
+    
+    # 获取今天和昨天的日期
+    today = datetime.now().date()
+    yesterday = today - timedelta(days=1)
+    
+    # 获取本周开始日期
+    week_start = today - timedelta(days=today.weekday())
+    
+    # 计算订阅源变化
+    today_feeds = db.query(Feed).filter(
+        Feed.created_at >= datetime.combine(today, datetime.min.time())
+    ).count()
+    
+    yesterday_feeds = db.query(Feed).filter(
+        Feed.created_at >= datetime.combine(yesterday, datetime.min.time()),
+        Feed.created_at < datetime.combine(today, datetime.min.time())
+    ).count()
+    
+    # 计算文章变化
+    today_articles = db.query(Article).filter(
+        Article.created_at >= datetime.combine(today, datetime.min.time())
+    ).count()
+    
+    yesterday_articles = db.query(Article).filter(
+        Article.created_at >= datetime.combine(yesterday, datetime.min.time()),
+        Article.created_at < datetime.combine(today, datetime.min.time())
+    ).count()
+    
+    weekly_articles = db.query(Article).filter(
+        Article.created_at >= datetime.combine(week_start, datetime.min.time())
+    ).count()
+    
+    # 计算未读文章变化
+    today_unread = db.query(Article).filter(
+        Article.read_status == False,
+        Article.created_at >= datetime.combine(today, datetime.min.time())
+    ).count()
+    
+    yesterday_unread = db.query(Article).filter(
+        Article.read_status == False,
+        Article.created_at >= datetime.combine(yesterday, datetime.min.time()),
+        Article.created_at < datetime.combine(today, datetime.min.time())
+    ).count()
+    
+    # 计算任务成功率（模拟数据）
+    # 在实际应用中，这里应该从任务历史记录中计算
+    total_tasks = 100
+    successful_tasks = 98
+    
+    return TrendsResponse(
+        feeds={
+            "today": today_feeds,
+            "yesterday": yesterday_feeds,
+            "change": today_feeds - yesterday_feeds,
+            "change_percent": ((today_feeds - yesterday_feeds) / yesterday_feeds * 100) if yesterday_feeds > 0 else 0
+        },
+        articles={
+            "today": today_articles,
+            "yesterday": yesterday_articles,
+            "weekly": weekly_articles,
+            "change": today_articles - yesterday_articles,
+            "change_percent": ((today_articles - yesterday_articles) / yesterday_articles * 100) if yesterday_articles > 0 else 0
+        },
+        unread_articles={
+            "today": today_unread,
+            "yesterday": yesterday_unread,
+            "change": today_unread - yesterday_unread,
+            "change_percent": ((today_unread - yesterday_unread) / yesterday_unread * 100) if yesterday_unread > 0 else 0
+        },
+        tasks={
+            "total": total_tasks,
+            "successful": successful_tasks,
+            "success_rate": (successful_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        }
+    )
