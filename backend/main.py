@@ -30,11 +30,27 @@ async def lifespan(app: FastAPI):
     
     # 初始化数据库
     try:
+        # 确保数据目录存在
+        import os
+        from pathlib import Path
+        
+        data_dir = Path("data")
+        if not data_dir.exists():
+            logger.info(f"创建数据目录: {data_dir}")
+            data_dir.mkdir(exist_ok=True)
+        
+        logs_dir = data_dir / "logs"
+        if not logs_dir.exists():
+            logger.info(f"创建日志目录: {logs_dir}")
+            logs_dir.mkdir(exist_ok=True)
+        
+        # 初始化数据库
         init_db()
         logger.info("数据库初始化完成")
     except Exception as e:
         logger.error(f"数据库初始化失败: {e}")
-        raise
+        # 不直接抛出异常，让应用继续启动
+        # 数据库连接会在第一次使用时建立
     
     yield
     

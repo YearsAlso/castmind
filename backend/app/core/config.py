@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     
     # 数据库配置
-    DATABASE_URL: str = "sqlite:///./data/castmind.db"
+    DATABASE_URL: str = "sqlite:///data/castmind.db"
     DATABASE_ECHO: bool = False
     
     # CORS 配置
@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "allow"  # 允许额外的环境变量
 
 # 全局配置实例
 settings = Settings()

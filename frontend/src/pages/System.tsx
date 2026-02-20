@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { 
   Server, Database, Cpu, HardDrive, 
-  Play, Stop, RefreshCw, Settings,
+  Play, Square, RefreshCw, Settings,
   Shield, Terminal, BarChart, Clock
 } from 'lucide-react'
 
@@ -208,7 +208,7 @@ export default function System() {
                 disabled={stopScheduler.isPending || health?.scheduler?.status !== 'running'}
                 className="btn btn-secondary flex items-center"
               >
-                <Stop className="h-4 w-4 mr-2" />
+                <Square className="h-4 w-4 mr-2" />
                 停止调度器
               </button>
               <button
