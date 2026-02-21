@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { Rss, BookOpen, Clock, TrendingUp, AlertCircle } from 'lucide-react'
 
 const API_BASE = '/api/v1'
 
 export default function Dashboard() {
+  const queryClient = useQueryClient()
+  
   const { data: stats, isLoading } = useQuery({
     queryKey: ['stats'],
     queryFn: () => axios.get(`${API_BASE}/system/stats`).then(res => res.data),
@@ -28,6 +30,14 @@ export default function Dashboard() {
   const { data: config } = useQuery({
     queryKey: ['config'],
     queryFn: () => axios.get(`${API_BASE}/system/config`).then(res => res.data),
+  })
+
+  const fetchAllMutation = useMutation({
+    mutationFn: () => axios.post(`${API_BASE}/feeds/fetch-all`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feeds'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    },
   })
 
   if (isLoading) {
@@ -130,7 +140,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">定时任务</span>
-              <span className="font-medium">{health?.scheduler || '未知'}</span>
+              <span className="font-medium">{health?.scheduler?.status === 'running' ? '运行中' : '已停止'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">AI 分析</span>
@@ -149,7 +159,13 @@ export default function Dashboard() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">快速操作</h2>
         <div className="flex flex-wrap gap-3">
           <button className="btn btn-primary">添加订阅源</button>
-          <button className="btn btn-secondary">手动抓取</button>
+          <button 
+            className="btn btn-secondary"
+            onClick={() => fetchAllMutation.mutate()}
+            disabled={fetchAllMutation.isPending}
+          >
+            {fetchAllMutation.isPending ? '抓取中...' : '手动抓取'}
+          </button>
           <button className="btn btn-secondary">查看日志</button>
           <button className="btn btn-secondary">导出数据</button>
         </div>

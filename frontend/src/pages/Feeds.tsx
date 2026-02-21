@@ -8,6 +8,8 @@ const API_BASE = '/api/v1'
 export default function Feeds() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingFeed, setEditingFeed] = useState<number | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [newFeed, setNewFeed] = useState({
     name: '',
     url: '',
@@ -27,6 +29,16 @@ export default function Feeds() {
   const { data: feeds, isLoading } = useQuery({
     queryKey: ['feeds'],
     queryFn: () => axios.get(`${API_BASE}/feeds`).then(res => res.data),
+  })
+
+  // 获取所有分类
+  const categories = ['all', ...new Set(feeds?.map((f: any) => f.category || '未分类') || ['all'])]
+
+  // 筛选订阅源
+  const filteredFeeds = feeds?.filter((feed: any) => {
+    const statusMatch = statusFilter === 'all' || feed.status === statusFilter
+    const categoryMatch = categoryFilter === 'all' || feed.category === categoryFilter
+    return statusMatch && categoryMatch
   })
 
   const addMutation = useMutation({
@@ -200,12 +212,25 @@ export default function Feeds() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold text-gray-900">所有订阅源</h2>
           <div className="flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <select className="input py-1 text-sm">
-              <option>全部状态</option>
-              <option>活跃</option>
-              <option>暂停</option>
-              <option>错误</option>
+            <select 
+              className="input py-1 text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">全部状态</option>
+              <option value="active">活跃</option>
+              <option value="paused">暂停</option>
+              <option value="error">错误</option>
+            </select>
+            <select 
+              className="input py-1 text-sm"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="all">全部分类</option>
+              {categories.filter(c => c !== 'all').map((cat: any) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -235,7 +260,7 @@ export default function Feeds() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {feeds?.map((feed: any) => (
+              {filteredFeeds?.map((feed: any) => (
                 <tr key={feed.id} className="hover:bg-gray-50">
                   {editingFeed === feed.id ? (
                     // 编辑模式

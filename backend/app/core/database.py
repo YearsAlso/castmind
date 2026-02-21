@@ -62,7 +62,9 @@ def init_db():
         
         # 验证表是否创建成功
         with engine.connect() as conn:
-            result = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            # SQLAlchemy 2.0 语法
+            from sqlalchemy import text
+            result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
             tables = [row[0] for row in result]
             logger.info(f"数据库中的表: {tables}")
             

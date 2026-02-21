@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { 
   Search, Filter, Eye, EyeOff, CheckCircle, 
-  Hash, Copy, BookOpen, Star, Layout
+  Hash, Copy, BookOpen, Star, Layout, Play,
+  Volume2, FileText
 } from 'lucide-react'
 
 const API_BASE = '/api/v1'
@@ -82,42 +83,26 @@ const DEFAULT_TEMPLATES = [
 ## 📋 播客信息
 - **节目**: {{feed_name}}
 - **发布时间**: {{published_at}}
-- **时长**: {{duration}}
-- **主持人**: {{hosts}}
-- **嘉宾**: {{guests}}
+- **时长**: {{audio_duration}}
+- **音频类型**: {{audio_type}}
 
 ## 🎯 核心观点
 {{key_points}}
 
-## 📝 详细笔记
+## 📝 播客摘要
+{{podcast_summary 🤖 AI分析
 
-### 主要内容
-{{content}}
+### 情感基调}}
 
-### 精彩片段
-{{highlights}}
-
-### 引用和名言
-{{quotes}}
-
-## 🤖 AI分析
-
-### 情感基调
+##
 {{sentiment}}
 
-### 话题分布
-{{topics}}
-
-### 学习收获
-{{learnings}}
-
-### 行动启发
-{{inspirations}}
+### 行动建议
+{{action_items}}
 
 ## 🔗 相关资源
 - 播客链接: {{url}}
-- 相关文章: {{related_articles}}
-- 推荐工具: {{recommended_tools}}`
+- 章节信息: {{chapters}}`
   }
 ]
 
@@ -136,9 +121,10 @@ export default function Excerpts() {
     queryKey: ['excerpts', page, statusFilter],
     queryFn: () => axios.get(`${API_BASE}/articles`, {
       params: {
-        page,
-        page_size: pageSize,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        skip: (page - 1) * pageSize,
+        limit: pageSize,
+        read_status: statusFilter === 'read' ? true : statusFilter === 'unread' ? false : undefined,
+        processed_status: statusFilter === 'processed' ? true : undefined,
       }
     }).then(res => res.data),
   })
@@ -162,6 +148,17 @@ export default function Excerpts() {
       queryClient.invalidateQueries({ queryKey: ['excerpts'] })
       queryClient.invalidateQueries({ queryKey: ['excerpt-stats'] })
     },
+  })
+
+  const analyzePodcastMutation = useMutation({
+    mutationFn: (id: number) => axios.post(`${API_BASE}/articles/${id}/analyze-podcast`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['excerpts'] })
+    },
+  })
+
+  const getPodcastDocumentMutation = useMutation({
+    mutationFn: (id: number) => axios.get(`${API_BASE}/articles/${id}/podcast-document`),
   })
 
   const filteredExcerpts = excerpts?.filter((excerpt: any) => {
@@ -358,6 +355,26 @@ export default function Excerpts() {
                           ))}
                         </div>
                       )}
+                      {/* 播客信息 */}
+                      {(excerpt.is_podcast || excerpt.audio_url) && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            <Volume2 className="h-3 w-3 mr-1" />
+                            播客
+                          </span>
+                          {excerpt.audio_duration && (
+                            <span className="text-xs text-gray-500">
+                              {Math.floor(excerpt.audio_duration / 60)}:{String(excerpt.audio_duration % 60).padStart(2, '0')}
+                            </span>
+                          )}
+                          {excerpt.podcast_summary && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              <FileText className="h-3 w-3 mr-1" />
+                              已分析
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -389,6 +406,30 @@ export default function Excerpts() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
+                      {/* 播客播放/分析按钮 */}
+                      {(excerpt.is_podcast || excerpt.audio_url) && (
+                        <>
+                          {excerpt.audio_url && (
+                            <button
+                              onClick={() => window.open(excerpt.audio_url, '_blank')}
+                              className="text-purple-600 hover:text-purple-900"
+                              title="播放播客"
+                            >
+                              <Play className="h-4 w-4" />
+                            </button>
+                          )}
+                          {!excerpt.podcast_summary && (
+                            <button
+                              onClick={() => analyzePodcastMutation.mutate(excerpt.id)}
+                              disabled={analyzePodcastMutation.isPending}
+                              className="text-purple-600 hover:text-purple-900 disabled:opacity-50"
+                              title="生成播客摘要"
+                            >
+                              <Volume2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </>
+                      )}
                       <button
                         onClick={() => window.open(excerpt.url, '_blank')}
                         className="text-gray-600 hover:text-gray-900"

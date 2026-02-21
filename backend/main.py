@@ -2,6 +2,7 @@
 CastMind 后端主入口
 FastAPI 应用服务器
 """
+
 import uvicorn
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,13 +13,14 @@ from typing import Optional
 from app.core.config import settings
 from app.core.database import init_db, get_db
 from app.api.v1 import api_router
+from app.scheduler.manager import scheduler_manager
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,35 +29,53 @@ async def lifespan(app: FastAPI):
     """
     # 启动时
     logger.info("启动 CastMind 后端服务...")
-    
+
+    # 确保数据目录存在
+    import os
+    from pathlib import Path
+
+    data_dir = Path("data")
+    if not data_dir.exists():
+        logger.info(f"创建数据目录: {data_dir}")
+        data_dir.mkdir(exist_ok=True)
+
+    logs_dir = data_dir / "logs"
+    if not logs_dir.exists():
+        logger.info(f"创建日志目录: {logs_dir}")
+        logs_dir.mkdir(exist_ok=True)
+
     # 初始化数据库
     try:
-        # 确保数据目录存在
-        import os
-        from pathlib import Path
-        
-        data_dir = Path("data")
-        if not data_dir.exists():
-            logger.info(f"创建数据目录: {data_dir}")
-            data_dir.mkdir(exist_ok=True)
-        
-        logs_dir = data_dir / "logs"
-        if not logs_dir.exists():
-            logger.info(f"创建日志目录: {logs_dir}")
-            logs_dir.mkdir(exist_ok=True)
-        
-        # 初始化数据库
         init_db()
         logger.info("数据库初始化完成")
     except Exception as e:
         logger.error(f"数据库初始化失败: {e}")
         # 不直接抛出异常，让应用继续启动
         # 数据库连接会在第一次使用时建立
-    
+
+    # 启动调度器
+    try:
+        if settings.SCHEDULER_ENABLED:
+            scheduler_manager.start()
+            logger.info("调度器启动成功")
+        else:
+            logger.info("调度器已禁用")
+    except Exception as e:
+        logger.error(f"调度器启动失败: {e}")
+
     yield
-    
+
     # 关闭时
     logger.info("关闭 CastMind 后端服务...")
+
+    # 停止调度器
+    try:
+        if scheduler_manager.is_running:
+            scheduler_manager.stop()
+            logger.info("调度器已停止")
+    except Exception as e:
+        logger.error(f"调度器停止失败: {e}")
+
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -80,6 +100,7 @@ if settings.CORS_ORIGINS:
 # 注册 API 路由
 app.include_router(api_router, prefix="/api/v1")
 
+
 @app.get("/")
 async def root():
     """根端点"""
@@ -90,6 +111,7 @@ async def root():
         "docs": "/api/docs" if settings.DOCS_ENABLED else None,
     }
 
+
 @app.get("/health")
 async def health_check():
     """健康检查端点"""
@@ -98,8 +120,9 @@ async def health_check():
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "database": "connected",
-        "timestamp": "2026-02-20T21:15:00Z"
+        "timestamp": "2026-02-20T21:15:00Z",
     }
+
 
 if __name__ == "__main__":
     uvicorn.run(
@@ -107,5 +130,5 @@ if __name__ == "__main__":
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,
-        log_level="info" if settings.DEBUG else "warning"
+        log_level="info" if settings.DEBUG else "warning",
     )
