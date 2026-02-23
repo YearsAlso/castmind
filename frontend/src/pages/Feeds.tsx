@@ -50,6 +50,11 @@ export default function Feeds() {
     },
   })
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    addMutation.mutate(newFeed)
+  }
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number, data: any }) => 
       axios.put(`${API_BASE}/feeds/${id}`, data),

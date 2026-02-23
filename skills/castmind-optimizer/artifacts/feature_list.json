@@ -1,0 +1,156 @@
+[
+  {
+    "category": "frontend",
+    "description": "创建 Articles.tsx 文章列表页面",
+    "steps": [
+      "在 frontend/src/pages/ 创建 Articles.tsx",
+      "在 App.tsx 添加 /articles 路由",
+      "实现文章列表、分页、筛选功能",
+      "添加文章详情查看"
+    ],
+    "passes": true,
+    "priority": 1,
+    "ux_impact": "high",
+    "reason": "内容消费核心流程缺失"
+  },
+  {
+    "category": "frontend",
+    "description": "Podcasts 页面添加内置音频播放器",
+    "steps": [
+      "使用 <audio> 标签实现内置播放器",
+      "添加播放/暂停/进度控制",
+      "添加播放速度控制"
+    ],
+    "passes": false,
+    "priority": 1,
+    "ux_impact": "high",
+    "reason": "当前跳转到外部播放体验差"
+  },
+  {
+    "category": "frontend",
+    "description": "添加 Toast 通知组件",
+    "steps": [
+      "安装 react-hot-toast 或自定义 Toast",
+      "在 mutation 成功/失败时显示通知",
+      "统一所有页面的反馈机制"
+    ],
+    "passes": false,
+    "priority": 1,
+    "ux_impact": "high",
+    "reason": "用户不知道操作结果"
+  },
+  {
+    "category": "frontend",
+    "description": "创建订阅源快速添加 Modal",
+    "steps": [
+      "创建 AddFeedModal 组件",
+      "支持 URL 粘贴自动获取名称",
+      "简化填写字段"
+    ],
+    "passes": false,
+    "priority": 2,
+    "ux_impact": "medium",
+    "reason": "减少操作步骤"
+  },
+  {
+    "category": "frontend",
+    "description": "播客页面添加一键处理按钮",
+    "steps": [
+      "添加'开始处理'按钮调用 full-pipeline",
+      "显示整体进度条",
+      "完成后显示总结"
+    ],
+    "passes": false,
+    "priority": 2,
+    "ux_impact": "medium",
+    "reason": "减少用户手动操作"
+  },
+  {
+    "category": "frontend",
+    "description": "统一导航命名",
+    "steps": [
+      "将'摘录'改为'文章'或'内容'",
+      "或明确区分'摘录'和'文章'的用途"
+    ],
+    "passes": false,
+    "priority": 2,
+    "ux_impact": "medium",
+    "reason": "导航语义不清"
+  },
+  {
+    "category": "frontend",
+    "description": "添加骨架屏加载状态",
+    "steps": [
+      "创建 Skeleton 组件",
+      "替换所有'加载中...'文字",
+      "添加重试按钮"
+    ],
+    "passes": false,
+    "priority": 3,
+    "ux_impact": "low",
+    "reason": "提升加载体验"
+  },
+  {
+    "category": "frontend",
+    "description": "添加批量操作功能",
+    "steps": [
+      "Feeds 页面: 批量删除、批量刷新",
+      "Articles 页面: 批量标记已读、批量删除"
+    ],
+    "passes": false,
+    "priority": 3,
+    "ux_impact": "medium",
+    "reason": "提升操作效率"
+  },
+  {
+    "category": "frontend",
+    "description": "移动端响应式优化",
+    "steps": [
+      "优化表格横向滚动",
+      "增大触摸区域",
+      "调整移动端布局"
+    ],
+    "passes": false,
+    "priority": 3,
+    "ux_impact": "medium",
+    "reason": "移动端体验差"
+  },
+  {
+    "category": "frontend",
+    "description": "添加搜索快捷键 (Cmd+K)",
+    "steps": [
+      "实现全局搜索弹窗",
+      "支持搜索文章、播客、订阅源"
+    ],
+    "passes": false,
+    "priority": 4,
+    "ux_impact": "low",
+    "reason": "提升搜索效率"
+  },
+  {
+    "category": "frontend",
+    "description": "提取公共 hooks 减少重复代码",
+    "steps": [
+      "创建 useApiMutation hook",
+      "创建 useToast hook",
+      "重构现有 mutation"
+    ],
+    "passes": false,
+    "priority": 4,
+    "ux_impact": "low",
+    "reason": "代码维护性"
+  },
+  {
+    "category": "frontend",
+    "description": "完善 TypeScript 类型定义",
+    "steps": [
+      "定义 Feed, Article, Podcast 类型",
+      "替换所有 any 类型",
+      "添加类型检查"
+    ],
+    "passes": false,
+    "priority": 5,
+    "ux_impact": "low",
+    "reason": "代码质量"
+  }
+]
