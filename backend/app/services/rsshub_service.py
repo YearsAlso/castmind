@@ -3,11 +3,13 @@ RSSHub 解析服务 - 支持 RSSHub 订阅源
 """
 import logging
 import re
+import ssl
 from typing import List, Dict, Optional, Tuple
 import feedparser
 from datetime import datetime
 import requests
 from urllib.parse import urlparse
+from urllib.request import urlopen
 
 logger = logging.getLogger(__name__)
 
@@ -135,8 +137,15 @@ class RSSHubService:
             if not normalized_url.endswith('.rss') and not normalized_url.endswith('.xml'):
                 normalized_url = f"{normalized_url}.rss"
             
+            # 创建 SSL 验证上下文
+            ssl_context = ssl._create_unverified_context()
+            
+            # 使用 requests 获取内容（禁用 SSL 验证）
+            response = requests.get(normalized_url, timeout=30, verify=False)
+            response.raise_for_status()
+            
             # 解析 RSS 订阅源
-            feed = feedparser.parse(normalized_url)
+            feed = feedparser.parse(response.text)
             
             if feed.bozo:
                 logger.warning(f"RSSHub 解析警告: {feed.bozo_exception}")
@@ -288,8 +297,8 @@ class RSSHubService:
         try:
             normalized_url = RSSHubService.normalize_rsshub_url(url)
             
-            # 测试访问
-            response = requests.get(normalized_url, timeout=10)
+            # 测试访问（禁用 SSL 验证）
+            response = requests.get(normalized_url, timeout=10, verify=False)
             
             if response.status_code == 200:
                 # 检查是否是有效的 RSS

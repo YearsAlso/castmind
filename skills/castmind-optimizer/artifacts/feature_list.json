@@ -1,5 +1,19 @@
 [
   {
+    "category": "backend",
+    "description": "修复 RSSHub SSL 证书验证失败问题",
+    "steps": [
+      "找到 RSSHub 解析相关代码",
+      "添加 SSL 证书验证跳过或使用自定义 CA",
+      "处理 CERTIFICATE_VERIFY_FAILED 错误",
+      "测试多个 RSS 源确保修复有效"
+    ],
+    "passes": false,
+    "priority": 1,
+    "ux_impact": "high",
+    "reason": "RSSHub 解析失败，无法获取播客内容"
+  },
+  {
     "category": "frontend",
     "description": "创建 Articles.tsx 文章列表页面",
     "steps": [
