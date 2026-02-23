@@ -8,7 +8,7 @@
       "处理 CERTIFICATE_VERIFY_FAILED 错误",
       "测试多个 RSS 源确保修复有效"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 1,
     "ux_impact": "high",
     "reason": "RSSHub 解析失败，无法获取播客内容"
