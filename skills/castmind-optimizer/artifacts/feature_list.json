@@ -136,7 +136,7 @@
       "实现全局搜索弹窗",
       "支持搜索文章、播客、订阅源"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 4,
     "ux_impact": "low",
     "reason": "提升搜索效率"
