@@ -4,17 +4,80 @@ RSSHub 解析服务 - 支持 RSSHub 订阅源
 import logging
 import re
 import ssl
+import time
 from typing import List, Dict, Optional, Tuple
 import feedparser
 from datetime import datetime
 import requests
+from requests.adapters import HTTPAdapter
 from urllib.parse import urlparse
 from urllib.request import urlopen
+from requests.packages.urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
+
+def create_session_with_retries(retries: int = 3, backoff_factor: float = 0.5, timeout: int = 30) -> requests.Session:
+    """
+    创建带有重试机制的 requests Session
+    
+    Args:
+        retries: 最大重试次数
+        backoff_factor: 退避因子
+        timeout: 超时时间（秒）
+        
+    Returns:
+        配置好的 requests Session
+    """
+    session = requests.Session()
+    
+    # 配置重试适配器
+    adapter = HTTPAdapter(
+        max_retries=Retry(
+            total=retries,
+            backoff_factor=backoff_factor,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=["GET", "POST"]
+        ),
+        pool_connections=10,
+        pool_maxsize=10
+    )
+    
+    # 为 HTTP 和 HTTPS 分别配置适配器
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    return session
+
+
 class RSSHubService:
     """RSSHub 解析服务类"""
+    
+    # 预配置的 session（延迟初始化）
+    _session: Optional[requests.Session] = None
+    
+    @classmethod
+    def get_session(cls) -> requests.Session:
+        """
+        获取带有重试机制的 Session（单例）
+        
+        Returns:
+            配置好的 requests Session
+        """
+        if cls._session is None:
+            cls._session = create_session_with_retries(
+                retries=3,
+                backoff_factor=0.5,
+                timeout=30
+            )
+        return cls._session
+    
+    @classmethod
+    def reset_session(cls):
+        """重置 Session（用于测试或重新配置）"""
+        if cls._session:
+            cls._session.close()
+        cls._session = None
     
     # RSSHub 官方实例
     RSSHUB_BASE_URLS = [
@@ -127,65 +190,99 @@ class RSSHubService:
         Returns:
             解析后的订阅源信息，或 None 如果解析失败
         """
-        try:
-            logger.info(f"开始解析 RSSHub 订阅源: {url}")
-            
-            # 标准化 URL
-            normalized_url = RSSHubService.normalize_rsshub_url(url)
-            
-            # 添加 .rss 后缀（如果需要）
-            if not normalized_url.endswith('.rss') and not normalized_url.endswith('.xml'):
-                normalized_url = f"{normalized_url}.rss"
-            
-            # 创建 SSL 验证上下文
-            ssl_context = ssl._create_unverified_context()
-            
-            # 使用 requests 获取内容（禁用 SSL 验证）
-            response = requests.get(normalized_url, timeout=30, verify=False)
-            response.raise_for_status()
-            
-            # 解析 RSS 订阅源
-            feed = feedparser.parse(response.text)
-            
-            if feed.bozo:
-                logger.warning(f"RSSHub 解析警告: {feed.bozo_exception}")
-            
-            # 提取订阅源信息
-            feed_info = {
-                "source_type": "rsshub",
-                "original_url": url,
-                "normalized_url": normalized_url,
-                "title": feed.feed.get("title", "RSSHub 订阅源"),
-                "description": feed.feed.get("description", "通过 RSSHub 生成的订阅源"),
-                "link": feed.feed.get("link", url),
-                "language": feed.feed.get("language", ""),
-                "updated": feed.feed.get("updated", ""),
-                "entries": []
-            }
-            
-            # 提取文章条目
-            for entry in feed.entries[:50]:  # 限制最多50条
-                article = {
-                    "title": entry.get("title", "无标题"),
-                    "link": entry.get("link", ""),
-                    "description": entry.get("description", ""),
-                    "content": entry.get("content", [{}])[0].get("value", "") if entry.get("content") else "",
-                    "published": entry.get("published", entry.get("updated", "")),
-                    "author": entry.get("author", ""),
-                    "categories": entry.get("tags", []),
-                    "rsshub_metadata": {
-                        "source": "rsshub",
-                        "original_url": url,
-                    }
+        last_error = None
+        
+        # 尝试多个 RSSHub 实例
+        for attempt in range(3):
+            try:
+                logger.info(f"开始解析 RSSHub 订阅源: {url}, 尝试 {attempt + 1}/3")
+                
+                # 标准化 URL
+                normalized_url = RSSHubService.normalize_rsshub_url(url)
+                
+                # 添加 .rss 后缀（如果需要）
+                if not normalized_url.endswith('.rss') and not normalized_url.endswith('.xml'):
+                    normalized_url = f"{normalized_url}.rss"
+                
+                # 创建 SSL 验证上下文
+                ssl_context = ssl._create_unverified_context()
+                
+                # 使用带有重试机制的 session 获取内容
+                session = RSSHubService.get_session()
+                
+                try:
+                    response = session.get(
+                        normalized_url, 
+                        timeout=30, 
+                        verify=False,
+                        headers={
+                            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                        }
+                    )
+                    response.raise_for_status()
+                except requests.exceptions.SSLError as e:
+                    logger.warning(f"SSL 错误（尝试 {attempt + 1}/3）: {e}, 等待后重试...")
+                    last_error = e
+                    time.sleep(2 ** attempt)  # 指数退避
+                    continue
+                except requests.exceptions.ConnectionError as e:
+                    logger.warning(f"连接错误（尝试 {attempt + 1}/3）: {e}, 等待后重试...")
+                    last_error = e
+                    time.sleep(2 ** attempt)
+                    continue
+                except requests.exceptions.Timeout as e:
+                    logger.warning(f"超时错误（尝试 {attempt + 1}/3）: {e}, 等待后重试...")
+                    last_error = e
+                    time.sleep(2 ** attempt)
+                    continue
+                
+                # 解析 RSS 订阅源
+                feed = feedparser.parse(response.text)
+                
+                if feed.bozo:
+                    logger.warning(f"RSSHub 解析警告: {feed.bozo_exception}")
+                
+                # 提取订阅源信息
+                feed_info = {
+                    "source_type": "rsshub",
+                    "original_url": url,
+                    "normalized_url": normalized_url,
+                    "title": feed.feed.get("title", "RSSHub 订阅源"),
+                    "description": feed.feed.get("description", "通过 RSSHub 生成的订阅源"),
+                    "link": feed.feed.get("link", url),
+                    "language": feed.feed.get("language", ""),
+                    "updated": feed.feed.get("updated", ""),
+                    "entries": []
                 }
-                feed_info["entries"].append(article)
-            
-            logger.info(f"成功解析 RSSHub 订阅源: {feed_info['title']}, 找到 {len(feed_info['entries'])} 篇文章")
-            return feed_info
-            
-        except Exception as e:
-            logger.error(f"RSSHub 解析失败: {url}, 错误: {e}")
-            return None
+                
+                # 提取文章条目
+                for entry in feed.entries[:50]:  # 限制最多50条
+                    article = {
+                        "title": entry.get("title", "无标题"),
+                        "link": entry.get("link", ""),
+                        "description": entry.get("description", ""),
+                        "content": entry.get("content", [{}])[0].get("value", "") if entry.get("content") else "",
+                        "published": entry.get("published", entry.get("updated", "")),
+                        "author": entry.get("author", ""),
+                        "categories": entry.get("tags", []),
+                        "rsshub_metadata": {
+                            "source": "rsshub",
+                            "original_url": url,
+                        }
+                    }
+                    feed_info["entries"].append(article)
+                
+                logger.info(f"成功解析 RSSHub 订阅源: {feed_info['title']}, 找到 {len(feed_info['entries'])} 篇文章")
+                return feed_info
+                
+            except Exception as e:
+                last_error = e
+                logger.error(f"RSSHub 解析失败（尝试 {attempt + 1}/3）: {url}, 错误: {e}")
+                if attempt < 2:
+                    time.sleep(2 ** attempt)  # 指数退避
+        
+        logger.error(f"RSSHub 解析最终失败: {url}, 错误: {last_error}")
+        return None
     
     @staticmethod
     def get_rsshub_examples() -> List[Dict]:
@@ -297,8 +394,24 @@ class RSSHubService:
         try:
             normalized_url = RSSHubService.normalize_rsshub_url(url)
             
-            # 测试访问（禁用 SSL 验证）
-            response = requests.get(normalized_url, timeout=10, verify=False)
+            # 使用带有重试机制的 session 测试访问
+            session = RSSHubService.get_session()
+            
+            try:
+                response = session.get(
+                    normalized_url, 
+                    timeout=30, 
+                    verify=False,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                    }
+                )
+            except requests.exceptions.SSLError as e:
+                return False, f"SSL 错误: {e}"
+            except requests.exceptions.ConnectionError as e:
+                return False, f"连接失败: {e}"
+            except requests.exceptions.Timeout as e:
+                return False, f"请求超时: {e}"
             
             if response.status_code == 200:
                 # 检查是否是有效的 RSS
