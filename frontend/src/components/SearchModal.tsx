@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { Search, X, FileText, Mic, Rss, Loader2, ArrowRight } from 'lucide-react'
+import { Search, X, FileText, Mic, Rss, ArrowRight } from 'lucide-react'
 
 const API_BASE = '/api/v1'
 

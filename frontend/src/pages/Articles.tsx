@@ -41,16 +41,14 @@ interface ArticlesResponse {
 export default function Articles() {
   const queryClient = useQueryClient()
   
-  // 分页和筛选状态
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFeed, setSelectedFeed] = useState<string>('all')
-  const [filterRead, setFilterRead] = useState<string>('all') // all, read, unread
+  const [filterRead, setFilterRead] = useState<string>('all')
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
   const [selectedArticles, setSelectedArticles] = useState<string[]>([])
 
-  // 获取文章列表
   const { data: articlesData, isLoading, error, refetch } = useQuery<ArticlesResponse>({
     queryKey: ['articles', page, pageSize, searchQuery, selectedFeed, filterRead],
     queryFn: async () => {
@@ -68,13 +66,11 @@ export default function Articles() {
     },
   })
 
-  // 获取订阅源列表（用于筛选）
   const { data: feedsData } = useQuery({
     queryKey: ['feeds'],
     queryFn: () => axios.get(`${API_BASE}/feeds`).then(res => res.data),
   })
 
-  // 标记为已读/未读
   const toggleReadMutation = useMutation({
     mutationFn: (articleId: string) =>
       axios.patch(`${API_BASE}/articles/${articleId}/read`),
@@ -87,7 +83,6 @@ export default function Articles() {
     },
   })
 
-  // 删除文章
   const deleteMutation = useMutation({
     mutationFn: (articleId: string) =>
       axios.delete(`${API_BASE}/articles/${articleId}`),
@@ -101,7 +96,6 @@ export default function Articles() {
     },
   })
 
-  // 批量标记已读
   const batchMarkReadMutation = useMutation({
     mutationFn: (ids: string[]) =>
       axios.post(`${API_BASE}/articles/batch-mark-read`, ids),
@@ -115,7 +109,6 @@ export default function Articles() {
     },
   })
 
-  // 批量删除
   const batchDeleteMutation = useMutation({
     mutationFn: (ids: string[]) =>
       axios.post(`${API_BASE}/articles/batch-delete`, ids),
@@ -129,13 +122,16 @@ export default function Articles() {
     },
   })
 
-  // 复制链接
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+
   const copyLink = (url: string) => {
     navigator.clipboard.writeText(url)
     toast.success('链接已复制到剪贴板')
   }
 
-  // 全选/取消全选
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedArticles(articlesData?.data.map((a: Article) => a.id) || [])
@@ -144,28 +140,14 @@ export default function Articles() {
     }
   }
 
-  // 单个选择/取消选择
   const handleSelectArticle = (articleId: string, checked: boolean) => {
     if (checked) {
-      setSelectedArticles([...selectedArticles, articleId])
+      setSelectedArticles(prev => [...prev, articleId])
     } else {
-      setSelectedArticles(selectedArticles.filter(id => id !== articleId))
+      setSelectedArticles(prev => prev.filter(id => id !== articleId))
     }
   }
 
-  // 格式化日期
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  // 渲染文章详情
   const renderArticleDetail = () => {
     if (!selectedArticle) return null
 
@@ -297,6 +279,98 @@ export default function Articles() {
     )
   }
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">文章列表</h1>
+        </div>
+        <SkeletonList rows={8} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">文章列表</h1>
+        </div>
+        <ErrorState
+          message="加载文章列表失败，请检查网络连接"
+          onRetry={() => refetch()}
+        />
+      </div>
+    )
+  }
+
+  if (!articlesData?.data?.length) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">文章列表</h1>
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 w-full sm:w-auto justify-center"
+          >
+            <RefreshCw size={16} />
+            刷新
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-col gap-4">
+            <div className="w-full">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="搜索文章..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={selectedFeed}
+                onChange={(e) => setSelectedFeed(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 sm:flex-none"
+              >
+                <option value="all">所有订阅源</option>
+                {feedsData?.data?.map((feed: any) => (
+                  <option key={feed.id} value={feed.id}>
+                    {feed.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filterRead}
+                onChange={(e) => setFilterRead(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 sm:flex-none"
+              >
+                <option value="all">全部</option>
+                <option value="read">已读</option>
+                <option value="unread">未读</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+          暂无文章
+        </div>
+
+        {renderArticleDetail()}
+      </div>
+    )
+  }
+
+  const isAllSelected = selectedArticles.length > 0 && selectedArticles.length === articlesData?.data?.length
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -310,7 +384,6 @@ export default function Articles() {
         </button>
       </div>
 
-      {/* 筛选和搜索 */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex flex-col gap-4">
           <div className="w-full">
@@ -353,187 +426,170 @@ export default function Articles() {
         </div>
       </div>
 
-      {/* 文章列表 */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {isLoading ? (
-          <SkeletonList rows={8} />
-        ) : error ? (
-          <ErrorState
-            message="加载文章列表失败，请检查网络连接"
-            onRetry={() => refetch()}
-          />
-        ) : !articlesData?.data?.length ? (
-          <div className="p-8 text-center text-gray-500">暂无文章</div>
-        ) : (
-          <>
-            <div className="divide-y divide-gray-200">
-              {/* 表头 */}
-              {selectedArticles.length > 0 && (
-                <div className="bg-gray-50 px-4 py-2 flex items-center gap-4">
+        {selectedArticles.length > 0 && (
+          <div className="bg-gray-50 px-4 py-2 flex items-center gap-4">
+            <button
+              onClick={() => handleSelectAll(isAllSelected)}
+              className="text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              {isAllSelected ? (
+                <CheckSquare className="h-5 w-5" />
+              ) : (
+                <Square className="h-5 w-5" />
+              )}
+            </button>
+            <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 项</span>
+          </div>
+        )}
+        <div className="divide-y divide-gray-200">
+          {articlesData.data.map((article) => (
+            <div
+              key={article.id}
+              className={`p-4 hover:bg-gray-50 transition-colors ${
+                !article.read_status ? 'bg-blue-50/50' : ''
+              } ${selectedArticles.includes(article.id) ? 'bg-blue-50' : ''}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start">
                   <button
-                    onClick={() => handleSelectAll(selectedArticles.length > 0 && selectedArticles.length === articlesData?.data?.length)}
-                    className="text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSelectArticle(article.id, !selectedArticles.includes(article.id))
+                    }}
+                    className="mt-1 mr-3 text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   >
-                    {selectedArticles.length > 0 && selectedArticles.length === articlesData?.data?.length ? (
+                    {selectedArticles.includes(article.id) ? (
                       <CheckSquare className="h-5 w-5" />
                     ) : (
                       <Square className="h-5 w-5" />
                     )}
                   </button>
-                  <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 项</span>
-                </div>
-              )}
-              {articlesData.data.map((article) => (
-                <div
-                  key={article.id}
-                  className={`p-4 hover:bg-gray-50 transition-colors ${
-                    !article.read_status ? 'bg-blue-50/50' : ''
-                  } ${selectedArticles.includes(article.id) ? 'bg-blue-50' : ''}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSelectArticle(article.id, !selectedArticles.includes(article.id))
-                        }}
-                        className="mt-1 mr-3 text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      >
-                        {selectedArticles.includes(article.id) ? (
-                          <CheckSquare className="h-5 w-5" />
-                        ) : (
-                          <Square className="h-5 w-5" />
-                        )}
-                      </button>
-                      <div
-                        className="flex-1 min-w-0 cursor-pointer"
-                        onClick={() => setSelectedArticle(article)}
-                      >
-                      <div className="flex items-center gap-2 mb-1">
-                        {!article.read_status && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-                        )}
-                        <h3 className="text-lg font-medium text-gray-900 truncate">
-                          {article.title}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <BookOpen size={14} />
-                          {article.feed_name}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          {formatDate(article.published_at)}
-                        </span>
-                        {article.keywords && article.keywords.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Hash size={14} />
-                            {article.keywords.slice(0, 3).join(', ')}
-                            {article.keywords.length > 3 && '...'}
-                          </span>
-                        )}
-                      </div>
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => setSelectedArticle(article)}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      {!article.read_status && (
+                        <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      )}
+                      <h3 className="text-lg font-medium text-gray-900 truncate">
+                        {article.title}
+                      </h3>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleReadMutation.mutate(article.id)
-                        }}
-                        className={`p-2 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                          article.read_status
-                            ? 'text-gray-400 hover:text-gray-600'
-                            : 'text-blue-600 hover:text-blue-700'
-                        }`}
-                        title={article.read_status ? '标记未读' : '标记已读'}
-                      >
-                        {article.read_status ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                      <a
-                        href={article.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                        title="在新窗口打开"
-                      >
-                        <ExternalLink size={20} />
-                      </a>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <BookOpen size={14} />
+                        {article.feed_name}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={14} />
+                        {formatDate(article.published_at)}
+                      </span>
+                      {article.keywords && article.keywords.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Hash size={14} />
+                          {article.keywords.slice(0, 3).join(', ')}
+                          {article.keywords.length > 3 && '...'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* 批量操作工具栏 */}
-            {selectedArticles.length > 0 && (
-              <div className="border-t border-gray-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 篇文章</span>
-                </div>
-                <div className="flex flex-wrap justify-center gap-2">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => batchMarkReadMutation.mutate(selectedArticles)}
-                    disabled={batchMarkReadMutation.isPending}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm disabled:opacity-50 min-h-[44px]"
-                  >
-                    <Eye className="h-4 w-4" />
-                    批量标记已读
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`确定要删除选中的 ${selectedArticles.length} 篇文章吗？`)) {
-                        batchDeleteMutation.mutate(selectedArticles)
-                      }
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleReadMutation.mutate(article.id)
                     }}
-                    disabled={batchDeleteMutation.isPending}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm disabled:opacity-50 min-h-[44px]"
+                    className={`p-2 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                      article.read_status
+                        ? 'text-gray-400 hover:text-gray-600'
+                        : 'text-blue-600 hover:text-blue-700'
+                    }`}
+                    title={article.read_status ? '标记未读' : '标记已读'}
                   >
-                    <Trash2 className="h-4 w-4" />
-                    批量删除
+                    {article.read_status ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
-                  <button
-                    onClick={() => setSelectedArticles([])}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm min-h-[44px]"
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-2 text-gray-400 hover:text-gray-600 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    title="在新窗口打开"
                   >
-                    取消选择
-                  </button>
+                    <ExternalLink size={20} />
+                  </a>
                 </div>
               </div>
-            )}
+            </div>
+          ))}
+        </div>
 
-            {/* 分页 */}
-            {articlesData.total_pages > 1 && (
-              <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  第 {articlesData.page} 页，共 {articlesData.total_pages} 页，总计 {articlesData.total} 篇文章
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={articlesData.page === 1}
-                    className="inline-flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    <ChevronLeft size={16} />
-                    上一页
-                  </button>
-                  <button
-                    onClick={() => setPage(p => Math.min(articlesData.total_pages, p + 1))}
-                    disabled={articlesData.page === articlesData.total_pages}
-                    className="inline-flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    下一页
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
+        {selectedArticles.length > 0 && (
+          <div className="border-t border-gray-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 篇文章</span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                onClick={() => batchMarkReadMutation.mutate(selectedArticles)}
+                disabled={batchMarkReadMutation.isPending}
+                className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm disabled:opacity-50 min-h-[44px]"
+              >
+                <Eye className="h-4 w-4" />
+                批量标记已读
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`确定要删除选中的 ${selectedArticles.length} 篇文章吗？`)) {
+                    batchDeleteMutation.mutate(selectedArticles)
+                  }
+                }}
+                disabled={batchDeleteMutation.isPending}
+                className="inline-flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm disabled:opacity-50 min-h-[44px]"
+              >
+                <Trash2 className="h-4 w-4" />
+                批量删除
+              </button>
+              <button
+                onClick={() => setSelectedArticles([])}
+                className="inline-flex items-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm min-h-[44px]"
+              >
+                取消选择
+              </button>
+            </div>
+          </div>
+        )}
+
+        {articlesData.total_pages > 1 && (
+          <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              第 {articlesData.page} 页，共 {articlesData.total_pages} 页，总计 {articlesData.total} 篇文章
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={articlesData.page === 1}
+                className="inline-flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                <ChevronLeft size={16} />
+                上一页
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(articlesData.total_pages, p + 1))}
+                disabled={articlesData.page === articlesData.total_pages}
+                className="inline-flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                下一页
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* 文章详情弹窗 */}
       {renderArticleDetail()}
     </div>
   )
