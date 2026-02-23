@@ -343,3 +343,186 @@ class TaskScheduler:
             logger.error(f"运行定时任务失败: {e}")
             results["error"] = str(e)
             return results
+
+    async def transcribe_pending_podcasts(self, limit: int = 5) -> dict:
+        """
+        转录待处理的播客
+
+        Args:
+            limit: 处理数量限制
+
+        Returns:
+            转录结果统计
+        """
+        logger.info(f"开始转录待处理播客 (限制: {limit})...")
+
+        db = SessionLocal()
+        try:
+            # 获取待转录的播客
+            pending = (
+                db.query(Article)
+                .filter(
+                    Article.is_podcast == True,
+                    Article.transcription_status == "pending",
+                    Article.audio_url.isnot(None),
+                )
+                .limit(limit)
+                .all()
+            )
+
+            if not pending:
+                logger.info("没有待转录的播客")
+                return {
+                    "timestamp": datetime.now().isoformat(),
+                    "total": 0,
+                    "transcribed": 0,
+                    "failed": 0,
+                }
+
+            # 导入服务
+            from app.services.podcast_downloader import podcast_downloader
+            from app.services.transcription_service import transcription_service
+
+            transcribed_count = 0
+            failed_count = 0
+
+            for article in pending:
+                try:
+                    # 更新状态
+                    article.transcription_status = "running"
+                    db.commit()
+
+                    # 下载并转录
+                    result = await transcription_service.transcribe_from_url(
+                        article.audio_url, article.id, podcast_downloader
+                    )
+
+                    if result["success"]:
+                        article.transcript = result["text"]
+                        article.audio_local_path = result.get(
+                            "local_path", article.audio_local_path
+                        )
+                        article.transcription_status = "completed"
+                        transcribed_count += 1
+                        logger.info(f"播客转录完成: {article.title}")
+                    else:
+                        article.transcription_status = "failed"
+                        failed_count += 1
+                        logger.error(
+                            f"播客转录失败: {article.title}, 错误: {result.get('error')}"
+                        )
+
+                    db.commit()
+
+                except Exception as e:
+                    article.transcription_status = "failed"
+                    db.commit()
+                    failed_count += 1
+                    logger.error(f"转录处理异常: {article.title}, 错误: {e}")
+
+            result = {
+                "timestamp": datetime.now().isoformat(),
+                "total": len(pending),
+                "transcribed": transcribed_count,
+                "failed": failed_count,
+            }
+
+            logger.info(f"播客转录完成: {result}")
+            return result
+
+        finally:
+            db.close()
+
+    async def analyze_pending_transcripts(self, limit: int = 5) -> dict:
+        """
+        分析待处理的转录文本
+
+        Args:
+            limit: 处理数量限制
+
+        Returns:
+            分析结果统计
+        """
+        logger.info(f"开始分析待处理转录 (限制: {limit})...")
+
+        db = SessionLocal()
+        try:
+            # 获取待分析的转录
+            pending = (
+                db.query(Article)
+                .filter(
+                    Article.is_podcast == True,
+                    Article.transcription_status == "completed",
+                    Article.analysis_status == "pending",
+                    Article.transcript.isnot(None),
+                )
+                .limit(limit)
+                .all()
+            )
+
+            if not pending:
+                logger.info("没有待分析的转录")
+                return {
+                    "timestamp": datetime.now().isoformat(),
+                    "total": 0,
+                    "analyzed": 0,
+                    "failed": 0,
+                }
+
+            # 导入 AI 服务
+            from app.services.ai_service import ai_service
+
+            analyzed_count = 0
+            failed_count = 0
+
+            for article in pending:
+                try:
+                    # 更新状态
+                    article.analysis_status = "running"
+                    db.commit()
+
+                    # AI 分析
+                    result = ai_service.analyze_podcast_transcript(
+                        transcript=article.transcript,
+                        title=article.title,
+                        audio_duration=article.audio_duration,
+                    )
+
+                    if result.get("success", True):
+                        import json
+
+                        article.podcast_summary = result.get("podcast_summary", "")
+                        article.key_points = ", ".join(result.get("key_topics", []))
+                        article.chapters = json.dumps(
+                            result.get("chapters", []), ensure_ascii=False
+                        )
+                        article.action_items = "; ".join(result.get("action_items", []))
+                        article.analysis_status = "completed"
+                        article.processed_status = True
+                        analyzed_count += 1
+                        logger.info(f"播客分析完成: {article.title}")
+                    else:
+                        article.analysis_status = "failed"
+                        failed_count += 1
+                        logger.error(f"播客分析失败: {article.title}")
+
+                    db.commit()
+
+                except Exception as e:
+                    article.analysis_status = "failed"
+                    db.commit()
+                    failed_count += 1
+                    logger.error(f"分析处理异常: {article.title}, 错误: {e}")
+
+            result = {
+                "timestamp": datetime.now().isoformat(),
+                "total": len(pending),
+                "analyzed": analyzed_count,
+                "failed": failed_count,
+            }
+
+            logger.info(f"播客分析完成: {result}")
+            return result
+
+        finally:
+            db.close()

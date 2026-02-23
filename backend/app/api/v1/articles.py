@@ -327,3 +327,332 @@ async def list_podcasts(
         "total": db.query(Article).filter(Article.is_podcast == True).count(),
         "podcasts": podcasts,
     }
+
+
+# ============ 播客下载、转录、分析 API ============
+
+
+@router.post("/{article_id}/download-audio")
+async def download_podcast_audio(article_id: int, db: Session = Depends(get_db)):
+    """
+    下载播客音频到本地
+    """
+    from datetime import datetime
+    from app.services.podcast_downloader import podcast_downloader
+
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="文章未找到")
+
+    if not article.audio_url:
+        return {
+            "status": "error",
+            "message": "该文章没有音频 URL",
+            "article_id": article_id,
+        }
+
+    try:
+        # 更新状态
+        article.transcription_status = "running"
+        db.commit()
+
+        # 下载音频
+        result = await podcast_downloader.download_audio(article.audio_url, article_id)
+
+        if result["success"]:
+            article.audio_local_path = result["local_path"]
+            article.audio_size = result.get("size")
+            article.transcription_status = "completed"
+            db.commit()
+
+            return {
+                "status": "success",
+                "message": "音频下载成功",
+                "article_id": article_id,
+                "data": {
+                    "local_path": result["local_path"],
+                    "size": result.get("size"),
+                    "skipped": result.get("skipped", False),
+                },
+                "timestamp": datetime.now().isoformat(),
+            }
+        else:
+            article.transcription_status = "failed"
+            db.commit()
+
+            return {
+                "status": "error",
+                "message": f"下载失败: {result.get('error')}",
+                "article_id": article_id,
+            }
+
+    except Exception as e:
+        article.transcription_status = "failed"
+        db.commit()
+        return {"status": "error", "message": str(e), "article_id": article_id}
+
+
+@router.post("/{article_id}/transcribe")
+async def transcribe_podcast(
+    article_id: int, language: Optional[str] = None, db: Session = Depends(get_db)
+):
+    """
+    转录音频为文字
+    """
+    from datetime import datetime
+    from app.services.podcast_downloader import podcast_downloader
+    from app.services.transcription_service import transcription_service
+
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="文章未找到")
+
+    if not article.audio_url and not article.audio_local_path:
+        return {
+            "status": "error",
+            "message": "该文章没有音频",
+            "article_id": article_id,
+        }
+
+    try:
+        # 更新状态
+        article.transcription_status = "running"
+        db.commit()
+
+        # 确定音频路径
+        audio_path = article.audio_local_path
+        audio_url = article.audio_url
+
+        if not audio_path and audio_url:
+            # 需要先下载
+            download_result = await podcast_downloader.download_audio(
+                audio_url, article_id
+            )
+            if not download_result["success"]:
+                article.transcription_status = "failed"
+                db.commit()
+                return {
+                    "status": "error",
+                    "message": f"下载失败: {download_result.get('error')}",
+                    "article_id": article_id,
+                }
+            audio_path = download_result["local_path"]
+            article.audio_local_path = audio_path
+            article.audio_size = download_result.get("size")
+
+        # 转录音频
+        result = await transcription_service.transcribe_audio(audio_path, language)
+
+        if result["success"]:
+            article.transcript = result["text"]
+            article.transcription_status = "completed"
+            db.commit()
+
+            return {
+                "status": "success",
+                "message": "转录成功",
+                "article_id": article_id,
+                "data": {
+                    "text_length": len(result["text"]),
+                    "language": result.get("language"),
+                    "provider": result.get("provider"),
+                },
+                "timestamp": datetime.now().isoformat(),
+            }
+        else:
+            article.transcription_status = "failed"
+            db.commit()
+
+            return {
+                "status": "error",
+                "message": f"转录失败: {result.get('error')}",
+                "article_id": article_id,
+            }
+
+    except Exception as e:
+        article.transcription_status = "failed"
+        db.commit()
+        return {"status": "error", "message": str(e), "article_id": article_id}
+
+
+@router.post("/{article_id}/analyze-transcript")
+async def analyze_podcast_transcript(article_id: int, db: Session = Depends(get_db)):
+    """
+    分析播客转录内容（使用 LLM）
+    """
+    from datetime import datetime
+    from app.services.ai_service import ai_service
+
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="文章未找到")
+
+    if not article.transcript:
+        return {
+            "status": "error",
+            "message": "该文章没有转录文本，请先执行转录",
+            "article_id": article_id,
+        }
+
+    try:
+        # 更新状态
+        article.analysis_status = "running"
+        db.commit()
+
+        # 使用 AI 分析
+        result = ai_service.analyze_podcast_transcript(
+            transcript=article.transcript,
+            title=article.title,
+            audio_duration=article.audio_duration,
+        )
+
+        if result.get("success", True):
+            # 更新数据库
+            import json
+
+            article.podcast_summary = result.get("podcast_summary", "")
+            article.key_points = ", ".join(result.get("key_topics", []))
+            article.chapters = json.dumps(
+                result.get("chapters", []), ensure_ascii=False
+            )
+            article.action_items = "; ".join(result.get("action_items", []))
+            article.analysis_status = "completed"
+            article.processed_status = True
+            db.commit()
+
+            return {
+                "status": "success",
+                "message": "分析完成",
+                "article_id": article_id,
+                "data": {
+                    "podcast_summary": result.get("podcast_summary"),
+                    "key_topics": result.get("key_topics"),
+                    "chapters": result.get("chapters"),
+                    "action_items": result.get("action_items"),
+                    "provider": result.get("provider"),
+                },
+                "timestamp": datetime.now().isoformat(),
+            }
+        else:
+            article.analysis_status = "failed"
+            db.commit()
+
+            return {
+                "status": "error",
+                "message": f"分析失败: {result.get('error')}",
+                "article_id": article_id,
+            }
+
+    except Exception as e:
+        article.transcription_status = "failed"
+        db.commit()
+        return {"status": "error", "message": str(e), "article_id": article_id}
+
+
+@router.post("/{article_id}/transcript/manual")
+async def set_manual_transcript(
+    article_id: int, transcript: str, db: Session = Depends(get_db)
+):
+    """
+    手动输入转录文本
+    """
+    from datetime import datetime
+
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="文章未找到")
+
+    try:
+        article.transcript = transcript
+        article.transcription_status = "completed"
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": "转录文本保存成功",
+            "article_id": article_id,
+            "text_length": len(transcript),
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "article_id": article_id}
+
+
+@router.get("/transcription-providers")
+async def get_transcription_providers():
+    """
+    获取可用的转录提供商
+    """
+    from app.services.transcription_service import transcription_service
+
+    return transcription_service.check_provider_status()
+
+
+@router.post("/{article_id}/full-pipeline")
+async def full_podcast_pipeline(
+    article_id: int, language: Optional[str] = None, db: Session = Depends(get_db)
+):
+    """
+    完整流程：下载 + 转录 + 分析
+    """
+    from datetime import datetime
+
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="文章未找到")
+
+    if not article.audio_url:
+        return {
+            "status": "error",
+            "message": "该文章没有音频 URL",
+            "article_id": article_id,
+        }
+
+    results = {"download": None, "transcribe": None, "analyze": None}
+
+    try:
+        # 步骤 1: 下载
+        download_response = await download_podcast_audio(article_id, db)
+        results["download"] = download_response
+
+        if download_response.get("status") != "success":
+            return {
+                "status": "error",
+                "message": "下载失败，终止流程",
+                "article_id": article_id,
+                "results": results,
+            }
+
+        # 步骤 2: 转录
+        transcribe_response = await transcribe_podcast(article_id, language, db)
+        results["transcribe"] = transcribe_response
+
+        if transcribe_response.get("status") != "success":
+            return {
+                "status": "error",
+                "message": "转录失败，终止流程",
+                "article_id": article_id,
+                "results": results,
+            }
+
+        # 步骤 3: 分析
+        analyze_response = await analyze_podcast_transcript(article_id, db)
+        results["analyze"] = analyze_response
+
+        return {
+            "status": "success"
+            if analyze_response.get("status") == "success"
+            else "partial",
+            "message": "处理完成",
+            "article_id": article_id,
+            "results": results,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "article_id": article_id,
+            "results": results,
+        }

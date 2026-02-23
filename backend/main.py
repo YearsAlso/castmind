@@ -85,6 +85,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/api/docs" if settings.DOCS_ENABLED else None,
     redoc_url="/api/redoc" if settings.DOCS_ENABLED else None,
+    redirect_slashes=False,
 )
 
 # 配置 CORS

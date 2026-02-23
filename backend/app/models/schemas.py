@@ -14,6 +14,8 @@ class FeedBase(BaseModel):
     url: str
     category: Optional[str] = "未分类"
     interval: Optional[int] = 3600
+    author: Optional[str] = None
+    description: Optional[str] = None
 
 
 class FeedCreate(FeedBase):
@@ -30,6 +32,9 @@ class FeedUpdate(BaseModel):
     category: Optional[str] = None
     interval: Optional[int] = None
     status: Optional[str] = None
+    author: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 class FeedResponse(FeedBase):
@@ -38,6 +43,7 @@ class FeedResponse(FeedBase):
     id: int
     status: str
     feed_type: str = "rss"
+    image_url: Optional[str] = None
     last_fetch: Optional[datetime]
     article_count: int
     created_at: datetime
@@ -73,6 +79,7 @@ class ArticleUpdate(BaseModel):
     processed_status: Optional[bool] = None
     keywords: Optional[str] = None
     sentiment: Optional[str] = None
+    author: Optional[str] = None
 
 
 class ArticleResponse(BaseModel):
@@ -83,6 +90,7 @@ class ArticleResponse(BaseModel):
     feed_name: Optional[str] = None
     title: str
     url: str
+    author: Optional[str] = None
     content: Optional[str] = None
     summary: Optional[str] = None
     published_at: Optional[datetime] = None
@@ -99,10 +107,13 @@ class ArticleResponse(BaseModel):
     audio_type: Optional[str] = None
     audio_duration: Optional[int] = None
     audio_size: Optional[int] = None
+    audio_local_path: Optional[str] = None
     podcast_description: Optional[str] = None
     transcript: Optional[str] = None
     podcast_summary: Optional[str] = None
     chapters: Optional[str] = None
+    transcription_status: str = "pending"
+    analysis_status: str = "pending"
     created_at: datetime
     updated_at: datetime
 
@@ -132,6 +143,46 @@ class PodcastAnalysisResponse(BaseModel):
     timestamp: str
 
 
+class TaskBase(BaseModel):
+    """任务基础模式"""
+
+    task_type: str
+    task_name: Optional[str] = None
+
+
+class TaskCreate(TaskBase):
+    """创建任务模式"""
+
+    feed_id: Optional[int] = None
+    article_id: Optional[int] = None
+
+
+class TaskResponse(TaskBase):
+    """任务响应模式"""
+
+    id: int
+    feed_id: Optional[int] = None
+    article_id: Optional[int] = None
+    status: str
+    progress: int
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    result_data: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TaskListResponse(BaseModel):
+    """任务列表响应"""
+
+    total: int
+    tasks: List[TaskResponse]
+
+
 class StatsResponse(BaseModel):
     """统计响应模式"""
 
@@ -150,6 +201,7 @@ class HealthResponse(BaseModel):
     database: str
     timestamp: str
     scheduler: Optional[dict] = None
+    ai_service: Optional[str] = None
 
 
 class TrendsResponse(BaseModel):

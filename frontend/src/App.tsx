@@ -1,10 +1,11 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { Home, Rss, BookOpen, Settings, BarChart3 } from 'lucide-react'
+import { Home, Rss, BookOpen, Settings, BarChart3, Mic } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Feeds from './pages/Feeds'
 import Excerpts from './pages/Excerpts'
+import Podcasts from './pages/Podcasts'
 import System from './pages/System'
 
 const API_BASE = '/api/v1'
@@ -13,12 +14,13 @@ function App() {
   const { data: health, isLoading } = useQuery({
     queryKey: ['health'],
     queryFn: () => axios.get(`${API_BASE}/system/health`).then(res => res.data),
-    refetchInterval: 30000, // 每30秒检查一次
+    refetchInterval: 30000,
   })
 
   const navItems = [
     { path: '/', label: '仪表板', icon: <Home size={20} /> },
     { path: '/feeds', label: '订阅源', icon: <Rss size={20} /> },
+    { path: '/podcasts', label: '播客', icon: <Mic size={20} /> },
     { path: '/excerpts', label: '摘录', icon: <BookOpen size={20} /> },
     { path: '/system', label: '系统', icon: <Settings size={20} /> },
   ]
@@ -73,6 +75,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/feeds" element={<Feeds />} />
+          <Route path="/podcasts" element={<Podcasts />} />
           <Route path="/excerpts" element={<Excerpts />} />
           <Route path="/system" element={<System />} />
         </Routes>

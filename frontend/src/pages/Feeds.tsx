@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { Plus, RefreshCw, Edit, Trash2, ExternalLink, Filter, Save, X } from 'lucide-react'
+import { Plus, RefreshCw, Edit, Trash2, ExternalLink, Save, X } from 'lucide-react'
 
 const API_BASE = '/api/v1'
 
@@ -28,7 +28,7 @@ export default function Feeds() {
 
   const { data: feeds, isLoading } = useQuery({
     queryKey: ['feeds'],
-    queryFn: () => axios.get(`${API_BASE}/feeds`).then(res => res.data),
+    queryFn: () => axios.get(`${API_BASE}/feeds/`).then(res => res.data),
   })
 
   // 获取所有分类
@@ -42,7 +42,7 @@ export default function Feeds() {
   })
 
   const addMutation = useMutation({
-    mutationFn: (feedData: any) => axios.post(`${API_BASE}/feeds`, feedData),
+    mutationFn: (feedData: any) => axios.post(`${API_BASE}/feeds/`, feedData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
       setShowAddForm(false)
@@ -60,22 +60,25 @@ export default function Feeds() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => axios.delete(`${API_BASE}/feeds/${id}`),
+    mutationFn: (id: number) => axios.delete(`${API_BASE}/feeds/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
     },
   })
 
   const fetchMutation = useMutation({
-    mutationFn: (id: string) => axios.post(`${API_BASE}/feeds/${id}/fetch`),
+    mutationFn: (id: number) => axios.post(`${API_BASE}/feeds/${id}/fetch`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    addMutation.mutate(newFeed)
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-500">加载订阅源...</div>
+      </div>
+    )
   }
 
   const handleEdit = (feed: any) => {
@@ -355,7 +358,7 @@ export default function Feeds() {
                         <div className="flex space-x-2">
                           <button
                             onClick={() => fetchMutation.mutate(feed.id)}
-                            disabled={fetchMutation.isPending}
+                            disabled={fetchMutation?.isPending}
                             className="text-blue-600 hover:text-blue-900"
                             title="手动抓取"
                           >
@@ -380,10 +383,10 @@ export default function Feeds() {
                           <button
                             onClick={() => {
                               if (window.confirm('确定要删除这个订阅源吗？')) {
-                                deleteMutation.mutate(feed.id)
+                                deleteMutation?.mutate(feed.id)
                               }
                             }}
-                            disabled={deleteMutation.isPending}
+                            disabled={deleteMutation?.isPending}
                             className="text-red-600 hover:text-red-900"
                             title="删除"
                           >

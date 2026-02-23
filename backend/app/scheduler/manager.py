@@ -142,6 +142,26 @@ class SchedulerManager:
             max_instances=settings.SCHEDULER_MAX_INSTANCES,
         )
 
+        # 5. 播客转录任务 - 每小时执行一次
+        self.scheduler.add_job(
+            func=self._run_transcribe_podcasts,
+            trigger=IntervalTrigger(hours=1),
+            id="transcribe_podcasts",
+            name="播客音频转录",
+            replace_existing=True,
+            max_instances=settings.SCHEDULER_MAX_INSTANCES,
+        )
+
+        # 6. 播客分析任务 - 每2小时执行一次
+        self.scheduler.add_job(
+            func=self._run_analyze_transcripts,
+            trigger=IntervalTrigger(hours=2),
+            id="analyze_transcripts",
+            name="播客转录分析",
+            replace_existing=True,
+            max_instances=settings.SCHEDULER_MAX_INSTANCES,
+        )
+
         logger.info("定时任务设置完成")
 
     async def _run_fetch_feeds(self):
@@ -186,6 +206,28 @@ class SchedulerManager:
             return result
         except Exception as e:
             logger.error(f"数据清理任务失败: {e}")
+            raise
+
+    async def _run_transcribe_podcasts(self):
+        """执行播客转录任务"""
+        logger.info("开始执行播客转录任务")
+        try:
+            result = await self.task_scheduler.transcribe_pending_podcasts(limit=5)
+            logger.info(f"播客转录任务完成: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"播客转录任务失败: {e}")
+            raise
+
+    async def _run_analyze_transcripts(self):
+        """执行播客分析任务"""
+        logger.info("开始执行播客分析任务")
+        try:
+            result = await self.task_scheduler.analyze_pending_transcripts(limit=5)
+            logger.info(f"播客分析任务完成: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"播客分析任务失败: {e}")
             raise
 
     def _job_executed(self, event):

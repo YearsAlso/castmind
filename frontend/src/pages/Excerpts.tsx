@@ -367,10 +367,32 @@ export default function Excerpts() {
                               {Math.floor(excerpt.audio_duration / 60)}:{String(excerpt.audio_duration % 60).padStart(2, '0')}
                             </span>
                           )}
-                          {excerpt.podcast_summary && (
+                          {/* 转录状态 */}
+                          {excerpt.transcription_status === 'completed' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                              已转录
+                            </span>
+                          )}
+                          {excerpt.transcription_status === 'running' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              转录中
+                            </span>
+                          )}
+                          {excerpt.transcription_status === 'failed' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                              转录失败
+                            </span>
+                          )}
+                          {/* 分析状态 */}
+                          {excerpt.analysis_status === 'completed' && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                               <FileText className="h-3 w-3 mr-1" />
                               已分析
+                            </span>
+                          )}
+                          {excerpt.analysis_status === 'running' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              分析中
                             </span>
                           )}
                         </div>

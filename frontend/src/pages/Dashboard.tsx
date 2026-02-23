@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { Rss, BookOpen, Clock, TrendingUp, AlertCircle } from 'lucide-react'
+import { Rss, BookOpen, Clock, TrendingUp, AlertCircle, Mic } from 'lucide-react'
 
 const API_BASE = '/api/v1'
 
@@ -14,26 +14,31 @@ export default function Dashboard() {
 
   const { data: trends } = useQuery({
     queryKey: ['trends'],
-    queryFn: () => axios.get(`${API_BASE}/system/trends`).then(res => res.data),
+    queryFn: () => axios.get(`${API_BASE}system/trends`).then(res => res.data),
   })
 
   const { data: feeds } = useQuery({
     queryKey: ['feeds'],
-    queryFn: () => axios.get(`${API_BASE}/feeds`).then(res => res.data),
+    queryFn: () => axios.get(`${API_BASE}/feeds/`).then(res => res.data),
   })
 
   const { data: health } = useQuery({
     queryKey: ['health'],
-    queryFn: () => axios.get(`${API_BASE}/system/health`).then(res => res.data),
+    queryFn: () => axios.get(`${API_BASE}system/health`).then(res => res.data),
   })
 
   const { data: config } = useQuery({
     queryKey: ['config'],
-    queryFn: () => axios.get(`${API_BASE}/system/config`).then(res => res.data),
+    queryFn: () => axios.get(`${API_BASE}system/config`).then(res => res.data),
+  })
+
+  const { data: podcastsData } = useQuery({
+    queryKey: ['podcasts'],
+    queryFn: () => axios.get(`${API_BASE}/articles/podcasts/`).then(res => res.data),
   })
 
   const fetchAllMutation = useMutation({
-    mutationFn: () => axios.post(`${API_BASE}/feeds/fetch-all`),
+    mutationFn: () => axios.post(`${API_BASE}/feeds//fetch-all`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
       queryClient.invalidateQueries({ queryKey: ['stats'] })
@@ -47,6 +52,10 @@ export default function Dashboard() {
       </div>
     )
   }
+
+  const totalPodcasts = podcastsData?.total || 0
+  const analyzedPodcasts = podcastsData?.podcasts?.filter((p: any) => p.analysis_status === 'completed').length || 0
+  const pendingPodcasts = podcastsData?.podcasts?.filter((p: any) => p.transcription_status !== 'completed').length || 0
 
   const statCards = [
     {
@@ -64,11 +73,12 @@ export default function Dashboard() {
       description: '本周新增',
     },
     {
-      title: '未读文章',
-      value: stats?.articles?.unread || 0,
-      icon: <AlertCircle className="h-6 w-6 text-yellow-600" />,
-      change: trends?.unread_articles?.change ? (trends.unread_articles.change > 0 ? `+${trends.unread_articles.change}` : trends.unread_articles.change.toString()) : '--',
-      description: '比昨天变化',
+      title: '播客',
+      value: totalPodcasts,
+      icon: <Mic className="h-6 w-6 text-purple-600" />,
+      change: pendingPodcasts > 0 ? `${pendingPodcasts} 待处理` : '已同步',
+      description: '已分析 / 总数',
+      detail: analyzedPodcasts > 0 ? `${analyzedPodcasts} / ${totalPodcasts}` : '--',
     },
     {
       title: '任务执行',
