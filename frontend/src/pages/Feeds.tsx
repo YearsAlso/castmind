@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import toast from 'react-hot-toast'
-import { Plus, RefreshCw, Edit, Trash2, ExternalLink, Save, X } from 'lucide-react'
+import { Plus, RefreshCw, Edit, Trash2, ExternalLink, Save, X, CheckSquare, Square } from 'lucide-react'
 import AddFeedModal from '../components/AddFeedModal'
 import { SkeletonList, ErrorState } from '../components/Skeleton'
 
@@ -13,6 +13,7 @@ export default function Feeds() {
   const [editingFeed, setEditingFeed] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [selectedFeeds, setSelectedFeeds] = useState<number[]>([])
   const [editForm, setEditForm] = useState({
     name: '',
     url: '',
@@ -73,6 +74,32 @@ export default function Feeds() {
     },
   })
 
+  // 批量删除
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => axios.post(`${API_BASE}/feeds/batch-delete`, ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['feeds'] })
+      setSelectedFeeds([])
+      toast.success(`成功删除 ${res.data.deleted_count} 个订阅源`)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '批量删除失败')
+    },
+  })
+
+  // 批量刷新
+  const batchFetchMutation = useMutation({
+    mutationFn: (ids: number[]) => axios.post(`${API_BASE}/feeds/batch-fetch`, ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['feeds'] })
+      const data = res.data.data
+      toast.success(`抓取完成: 成功 ${data.success}, 失败 ${data.error}`)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '批量抓取失败')
+    },
+  })
+
   const handleEdit = (feed: any) => {
     setEditingFeed(feed.id)
     setEditForm({
@@ -90,6 +117,24 @@ export default function Feeds() {
 
   const handleCancelEdit = () => {
     setEditingFeed(null)
+  }
+
+  // 全选/取消全选
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedFeeds(filteredFeeds?.map((f: any) => f.id) || [])
+    } else {
+      setSelectedFeeds([])
+    }
+  }
+
+  // 单个选择/取消选择
+  const handleSelectFeed = (feedId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedFeeds([...selectedFeeds, feedId])
+    } else {
+      setSelectedFeeds(selectedFeeds.filter(id => id !== feedId))
+    }
   }
 
   if (isLoading) {
@@ -171,6 +216,18 @@ export default function Feeds() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                  <button
+                    onClick={() => handleSelectAll(selectedFeeds.length > 0 && selectedFeeds.length === filteredFeeds?.length)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    {selectedFeeds.length > 0 && selectedFeeds.length === filteredFeeds?.length ? (
+                      <CheckSquare className="h-4 w-4" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </button>
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   名称
                 </th>
@@ -197,7 +254,7 @@ export default function Feeds() {
                   {editingFeed === feed.id ? (
                     // 编辑模式
                     <>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <input
                           type="text"
                           value={editForm.name}
@@ -259,6 +316,21 @@ export default function Feeds() {
                   ) : (
                     // 查看模式
                     <>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleSelectFeed(feed.id, !selectedFeeds.includes(feed.id))
+                          }}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          {selectedFeeds.includes(feed.id) ? (
+                            <CheckSquare className="h-4 w-4" />
+                          ) : (
+                            <Square className="h-4 w-4" />
+                          )}
+                        </button>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-gray-900">{feed.name}</div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">{feed.url}</div>
@@ -330,6 +402,41 @@ export default function Feeds() {
             </tbody>
           </table>
         </div>
+
+        {/* 批量操作工具栏 */}
+        {selectedFeeds.length > 0 && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-4 z-40">
+            <span className="text-sm">已选择 {selectedFeeds.length} 项</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => batchFetchMutation.mutate(selectedFeeds)}
+                disabled={batchFetchMutation.isPending}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-sm disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${batchFetchMutation.isPending ? 'animate-spin' : ''}`} />
+                批量刷新
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`确定要删除选中的 ${selectedFeeds.length} 个订阅源吗？`)) {
+                    batchDeleteMutation.mutate(selectedFeeds)
+                  }
+                }}
+                disabled={batchDeleteMutation.isPending}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                批量删除
+              </button>
+              <button
+                onClick={() => setSelectedFeeds([])}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 rounded text-sm"
+              >
+                取消选择
+              </button>
+            </div>
+          </div>
+        )}
 
         {(!feeds || feeds.length === 0) && (
           <div className="text-center py-12">

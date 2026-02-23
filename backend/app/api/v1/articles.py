@@ -139,6 +139,89 @@ async def delete_article(article_id: int, db: Session = Depends(get_db)):
         db.commit()
 
 
+# ============ 批量操作 API ============
+
+@router.post("/batch-mark-read")
+async def batch_mark_articles_read(article_ids: List[int], db: Session = Depends(get_db)):
+    """
+    批量标记文章为已读
+    """
+    updated_count = 0
+
+    for article_id in article_ids:
+        article = db.query(Article).filter(Article.id == article_id).first()
+        if article:
+            article.read_status = True
+            updated_count += 1
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "updated_count": updated_count,
+        "total": len(article_ids),
+    }
+
+
+@router.post("/batch-mark-unread")
+async def batch_mark_articles_unread(article_ids: List[int], db: Session = Depends(get_db)):
+    """
+    批量标记文章为未读
+    """
+    updated_count = 0
+
+    for article_id in article_ids:
+        article = db.query(Article).filter(Article.id == article_id).first()
+        if article:
+            article.read_status = False
+            updated_count += 1
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "updated_count": updated_count,
+        "total": len(article_ids),
+    }
+
+
+@router.post("/batch-delete")
+async def batch_delete_articles(article_ids: List[int], db: Session = Depends(get_db)):
+    """
+    批量删除文章
+    """
+    deleted_count = 0
+    errors = []
+
+    # 收集需要更新的 feed
+    feeds_to_update = set()
+
+    for article_id in article_ids:
+        article = db.query(Article).filter(Article.id == article_id).first()
+        if article:
+            feeds_to_update.add(article.feed_id)
+            db.delete(article)
+            deleted_count += 1
+        else:
+            errors.append({"id": article_id, "error": "文章未找到"})
+
+    db.commit()
+
+    # 更新相关订阅源的文章计数
+    for feed_id in feeds_to_update:
+        feed = db.query(Feed).filter(Feed.id == feed_id).first()
+        if feed:
+            feed.article_count = db.query(Article).filter(Article.feed_id == feed.id).count()
+            db.commit()
+
+    return {
+        "status": "success",
+        "deleted_count": deleted_count,
+        "total": len(article_ids),
+        "errors": errors if errors else None,
+    }
+
+
 @router.post("/{article_id}/mark-read", response_model=ArticleResponse)
 async def mark_article_read(article_id: int, db: Session = Depends(get_db)):
     """

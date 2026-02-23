@@ -6,7 +6,7 @@ import {
   Search, Eye, EyeOff, CheckCircle,
   Hash, Copy, BookOpen,
   Trash2, RefreshCw, ChevronLeft, ChevronRight,
-  ExternalLink, Calendar
+  ExternalLink, Calendar, CheckSquare, Square
 } from 'lucide-react'
 import { SkeletonList, ErrorState } from '../components/Skeleton'
 
@@ -48,6 +48,7 @@ export default function Articles() {
   const [selectedFeed, setSelectedFeed] = useState<string>('all')
   const [filterRead, setFilterRead] = useState<string>('all') // all, read, unread
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
+  const [selectedArticles, setSelectedArticles] = useState<string[]>([])
 
   // 获取文章列表
   const { data: articlesData, isLoading, error, refetch } = useQuery<ArticlesResponse>({
@@ -100,10 +101,56 @@ export default function Articles() {
     },
   })
 
+  // 批量标记已读
+  const batchMarkReadMutation = useMutation({
+    mutationFn: (ids: string[]) =>
+      axios.post(`${API_BASE}/articles/batch-mark-read`, ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['articles'] })
+      setSelectedArticles([])
+      toast.success(`成功标记 ${res.data.updated_count} 篇文章为已读`)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '批量标记已读失败')
+    },
+  })
+
+  // 批量删除
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) =>
+      axios.post(`${API_BASE}/articles/batch-delete`, ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['articles'] })
+      setSelectedArticles([])
+      toast.success(`成功删除 ${res.data.deleted_count} 篇文章`)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '批量删除失败')
+    },
+  })
+
   // 复制链接
   const copyLink = (url: string) => {
     navigator.clipboard.writeText(url)
     toast.success('链接已复制到剪贴板')
+  }
+
+  // 全选/取消全选
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedArticles(articlesData?.data.map((a: Article) => a.id) || [])
+    } else {
+      setSelectedArticles([])
+    }
+  }
+
+  // 单个选择/取消选择
+  const handleSelectArticle = (articleId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedArticles([...selectedArticles, articleId])
+    } else {
+      setSelectedArticles(selectedArticles.filter(id => id !== articleId))
+    }
   }
 
   // 格式化日期
@@ -318,16 +365,48 @@ export default function Articles() {
         ) : (
           <>
             <div className="divide-y divide-gray-200">
+              {/* 表头 */}
+              {selectedArticles.length > 0 && (
+                <div className="bg-gray-50 px-4 py-2 flex items-center gap-4">
+                  <button
+                    onClick={() => handleSelectAll(selectedArticles.length > 0 && selectedArticles.length === articlesData?.data?.length)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    {selectedArticles.length > 0 && selectedArticles.length === articlesData?.data?.length ? (
+                      <CheckSquare className="h-4 w-4" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </button>
+                  <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 项</span>
+                </div>
+              )}
               {articlesData.data.map((article) => (
                 <div
                   key={article.id}
-                  className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                  className={`p-4 hover:bg-gray-50 transition-colors ${
                     !article.read_status ? 'bg-blue-50/50' : ''
-                  }`}
-                  onClick={() => setSelectedArticle(article)}
+                  } ${selectedArticles.includes(article.id) ? 'bg-blue-50' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
+                    <div className="flex items-start">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSelectArticle(article.id, !selectedArticles.includes(article.id))
+                        }}
+                        className="mt-1 mr-3 text-gray-500 hover:text-gray-700"
+                      >
+                        {selectedArticles.includes(article.id) ? (
+                          <CheckSquare className="h-4 w-4" />
+                        ) : (
+                          <Square className="h-4 w-4" />
+                        )}
+                      </button>
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => setSelectedArticle(article)}
+                      >
                       <div className="flex items-center gap-2 mb-1">
                         {!article.read_status && (
                           <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
@@ -384,6 +463,43 @@ export default function Articles() {
                 </div>
               ))}
             </div>
+
+            {/* 批量操作工具栏 */}
+            {selectedArticles.length > 0 && (
+              <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between bg-gray-50">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 篇文章</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => batchMarkReadMutation.mutate(selectedArticles)}
+                    disabled={batchMarkReadMutation.isPending}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm disabled:opacity-50"
+                  >
+                    <Eye className="h-4 w-4" />
+                    批量标记已读
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`确定要删除选中的 ${selectedArticles.length} 篇文章吗？`)) {
+                        batchDeleteMutation.mutate(selectedArticles)
+                      }
+                    }}
+                    disabled={batchDeleteMutation.isPending}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    批量删除
+                  </button>
+                  <button
+                    onClick={() => setSelectedArticles([])}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
+                  >
+                    取消选择
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* 分页 */}
             {articlesData.total_pages > 1 && (

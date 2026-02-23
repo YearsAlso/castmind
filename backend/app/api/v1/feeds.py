@@ -98,6 +98,65 @@ async def delete_feed(feed_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+# ============ 批量操作 API ============
+
+@router.post("/batch-delete")
+async def batch_delete_feeds(feed_ids: List[int], db: Session = Depends(get_db)):
+    """
+    批量删除订阅源
+    """
+    deleted_count = 0
+    errors = []
+
+    for feed_id in feed_ids:
+        feed = db.query(Feed).filter(Feed.id == feed_id).first()
+        if feed:
+            db.delete(feed)
+            deleted_count += 1
+        else:
+            errors.append({"id": feed_id, "error": "订阅源未找到"})
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "deleted_count": deleted_count,
+        "total": len(feed_ids),
+        "errors": errors if errors else None,
+    }
+
+
+@router.post("/batch-fetch")
+async def batch_fetch_feeds(feed_ids: List[int], db: Session = Depends(get_db)):
+    """
+    批量抓取订阅源
+    """
+    from app.scheduler.tasks import TaskScheduler
+
+    results = {"success": 0, "error": 0, "feeds": []}
+    task_scheduler = TaskScheduler()
+
+    for feed_id in feed_ids:
+        feed = db.query(Feed).filter(Feed.id == feed_id).first()
+        if feed:
+            try:
+                task_scheduler.fetch_single_feed(feed)
+                results["success"] += 1
+                results["feeds"].append({"id": feed_id, "status": "success"})
+            except Exception as e:
+                results["error"] += 1
+                results["feeds"].append({"id": feed_id, "status": "error", "error": str(e)})
+        else:
+            results["error"] += 1
+            results["feeds"].append({"id": feed_id, "status": "error", "error": "订阅源未找到"})
+
+    return {
+        "status": "success",
+        "message": f"抓取完成: 成功 {results['success']}, 失败 {results['error']}",
+        "data": results,
+    }
+
+
 @router.post("/{feed_id}/fetch", response_model=FeedResponse)
 async def fetch_feed(feed_id: int, db: Session = Depends(get_db)):
     """

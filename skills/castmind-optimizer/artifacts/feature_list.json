@@ -111,7 +111,7 @@
       "Feeds 页面: 批量删除、批量刷新",
       "Articles 页面: 批量标记已读、批量删除"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 3,
     "ux_impact": "medium",
     "reason": "提升操作效率"
