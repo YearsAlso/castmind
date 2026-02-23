@@ -3,20 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { Plus, RefreshCw, Edit, Trash2, ExternalLink, Save, X } from 'lucide-react'
+import AddFeedModal from '../components/AddFeedModal'
 
 const API_BASE = '/api/v1'
 
 export default function Feeds() {
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
   const [editingFeed, setEditingFeed] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [newFeed, setNewFeed] = useState({
-    name: '',
-    url: '',
-    category: '技术',
-    interval: 3600,
-  })
   const [editForm, setEditForm] = useState({
     name: '',
     url: '',
@@ -41,24 +36,6 @@ export default function Feeds() {
     const categoryMatch = categoryFilter === 'all' || feed.category === categoryFilter
     return statusMatch && categoryMatch
   })
-
-  const addMutation = useMutation({
-    mutationFn: (feedData: any) => axios.post(`${API_BASE}/feeds/`, feedData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feeds'] })
-      setShowAddForm(false)
-      setNewFeed({ name: '', url: '', category: '技术', interval: 3600 })
-      toast.success('订阅源添加成功')
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || '添加订阅源失败')
-    },
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    addMutation.mutate(newFeed)
-  }
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number, data: any }) =>
@@ -138,99 +115,13 @@ export default function Feeds() {
           <p className="text-gray-600">管理您的 RSS/Atom 订阅源</p>
         </div>
         <button
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => setShowAddModal(true)}
           className="btn btn-primary flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
           添加订阅源
         </button>
       </div>
-
-      {/* 添加表单 */}
-      {showAddForm && (
-        <div className="card mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">添加新订阅源</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                名称
-              </label>
-              <input
-                type="text"
-                value={newFeed.name}
-                onChange={(e) => setNewFeed({ ...newFeed, name: e.target.value })}
-                className="input"
-                placeholder="例如：技术博客"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                RSS URL
-              </label>
-              <input
-                type="url"
-                value={newFeed.url}
-                onChange={(e) => setNewFeed({ ...newFeed, url: e.target.value })}
-                className="input"
-                placeholder="https://example.com/rss"
-                required
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                支持标准 RSS/Atom 和 RSSHub URL（如 https://rsshub.app/twitter/user/elonmusk）
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  分类
-                </label>
-                <select
-                  value={newFeed.category}
-                  onChange={(e) => setNewFeed({ ...newFeed, category: e.target.value })}
-                  className="input"
-                >
-                  <option value="技术">技术</option>
-                  <option value="新闻">新闻</option>
-                  <option value="娱乐">娱乐</option>
-                  <option value="教育">教育</option>
-                  <option value="其他">其他</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  抓取间隔（秒）
-                </label>
-                <input
-                  type="number"
-                  value={newFeed.interval}
-                  onChange={(e) => setNewFeed({ ...newFeed, interval: parseInt(e.target.value) })}
-                  className="input"
-                  min="300"
-                  step="300"
-                />
-                <p className="mt-1 text-xs text-gray-500">建议：高频源 300-1800，低频源 3600-86400</p>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="btn btn-secondary"
-              >
-                取消
-              </button>
-              <button
-                type="submit"
-                disabled={addMutation.isPending}
-                className="btn btn-primary"
-              >
-                {addMutation.isPending ? '添加中...' : '添加订阅源'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* 订阅源列表 */}
       <div className="card">
@@ -428,7 +319,7 @@ export default function Feeds() {
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">暂无订阅源</div>
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={() => setShowAddModal(true)}
               className="btn btn-primary"
             >
               添加第一个订阅源
@@ -436,6 +327,13 @@ export default function Feeds() {
           </div>
         )}
       </div>
+
+      {/* 添加订阅源 Modal */}
+      <AddFeedModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['feeds'] })}
+      />
 
       {/* 使用提示 */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">

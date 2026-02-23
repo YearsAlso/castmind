@@ -61,7 +61,7 @@
       "支持 URL 粘贴自动获取名称",
       "简化填写字段"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 2,
     "ux_impact": "medium",
     "reason": "减少操作步骤"
