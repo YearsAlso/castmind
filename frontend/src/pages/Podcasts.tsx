@@ -1,19 +1,177 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { 
-  Search, Play, Volume2, FileText, Download,
-  CheckCircle, Clock, AlertCircle, Loader2, Plus, Rss
+  Search, Play, Pause, Volume2, FileText, Download,
+  CheckCircle, Clock, AlertCircle, Loader2, Plus,
+  SkipBack, SkipForward, Gauge
 } from 'lucide-react'
 
 const API_BASE = '/api/v1'
+
+// 音频播放器组件
+interface AudioPlayerProps {
+  audioUrl: string
+  title: string
+}
+
+function AudioPlayer({ audioUrl, title }: AudioPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const updateTime = () => setCurrentTime(audio.currentTime)
+    const updateDuration = () => setDuration(audio.duration)
+    const onEnded = () => setIsPlaying(false)
+
+    audio.addEventListener('timeupdate', updateTime)
+    audio.addEventListener('loadedmetadata', updateDuration)
+    audio.addEventListener('ended', onEnded)
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime)
+      audio.removeEventListener('loadedmetadata', updateDuration)
+      audio.removeEventListener('ended', onEnded)
+    }
+  }, [audioUrl])
+
+  const togglePlay = () => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    if (isPlaying) {
+      audio.pause()
+    } else {
+      audio.play()
+    }
+    setIsPlaying(!isPlaying)
+  }
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const newTime = parseFloat(e.target.value)
+    audio.currentTime = newTime
+    setCurrentTime(newTime)
+  }
+
+  const handleSkip = (seconds: number) => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + seconds))
+  }
+
+  const changePlaybackRate = (rate: number) => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    audio.playbackRate = rate
+    setPlaybackRate(rate)
+    setShowSpeedMenu(false)
+  }
+
+  const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return '00:00'
+    const mins = Math.floor(time / 60)
+    const secs = Math.floor(time % 60)
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-lg p-3 text-white">
+      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      
+      {/* 标题 */}
+      <div className="text-sm text-gray-300 mb-2 truncate">{title}</div>
+      
+      {/* 进度条 */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs text-gray-400 w-10 text-right">{formatTime(currentTime)}</span>
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          value={currentTime}
+          onChange={handleSeek}
+          className="flex-1 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-primary-500"
+        />
+        <span className="text-xs text-gray-400 w-10">{formatTime(duration)}</span>
+      </div>
+      
+      {/* 控制按钮 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleSkip(-15)}
+            className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
+            title="后退 15 秒"
+          >
+            <SkipBack className="h-4 w-4" />
+          </button>
+          
+          <button
+            onClick={togglePlay}
+            className="p-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+          >
+            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+          </button>
+          
+          <button
+            onClick={() => handleSkip(30)}
+            className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
+            title="前进 30 秒"
+          >
+            <SkipForward className="h-4 w-4" />
+          </button>
+        </div>
+        
+        {/* 速度控制 */}
+        <div className="relative">
+          <button
+            onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+            className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            <Gauge className="h-3 w-3" />
+            {playbackRate}x
+          </button>
+          
+          {showSpeedMenu && (
+            <div className="absolute bottom-full right-0 mb-1 bg-gray-800 rounded-lg shadow-lg py-1 min-w-[80px]">
+              {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((rate) => (
+                <button
+                  key={rate}
+                  onClick={() => changePlaybackRate(rate)}
+                  className={`w-full px-3 py-1.5 text-xs text-left hover:bg-gray-700 transition-colors ${
+                    playbackRate === rate ? 'text-primary-400' : 'text-gray-300'
+                  }`}
+                >
+                  {rate}x
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Podcasts() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
+  const [playingPodcast, setPlayingPodcast] = useState<number | null>(null)
   const pageSize = 20
 
   const queryClient = useQueryClient()
@@ -227,15 +385,30 @@ export default function Podcasts() {
               {/* 操作按钮 */}
               <div className="flex flex-wrap gap-2">
                 {podcast.audio_url && (
-                  <a
-                    href={podcast.audio_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-sm btn-secondary flex items-center"
+                  <button
+                    onClick={() => setPlayingPodcast(playingPodcast === podcast.id ? null : podcast.id)}
+                    className={`btn btn-sm flex items-center ${
+                      playingPodcast === podcast.id 
+                        ? 'btn-primary' 
+                        : 'btn-secondary'
+                    }`}
                   >
-                    <Play className="h-4 w-4 mr-1" />
-                    播放
-                  </a>
+                    {playingPodcast === podcast.id ? (
+                      <><Pause className="h-4 w-4 mr-1" />关闭</>
+                    ) : (
+                      <><Play className="h-4 w-4 mr-1" />播放</>
+                    )}
+                  </button>
+                )}
+                
+                {/* 内置音频播放器 */}
+                {playingPodcast === podcast.id && podcast.audio_url && (
+                  <div className="w-full mt-3">
+                    <AudioPlayer 
+                      audioUrl={podcast.audio_url} 
+                      title={podcast.title}
+                    />
+                  </div>
                 )}
                 
                 {!podcast.audio_local_path && (

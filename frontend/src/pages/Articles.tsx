@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { 
-  Search, Filter, Eye, EyeOff, CheckCircle, 
-  Hash, Copy, BookOpen, Star, Layout,
-  FileText, Trash2, RefreshCw, ChevronLeft, ChevronRight,
-  ExternalLink, Calendar, Clock
+  Search, Eye, EyeOff, CheckCircle, 
+  Hash, Copy, BookOpen,
+  Trash2, RefreshCw, ChevronLeft, ChevronRight,
+  ExternalLink, Calendar
 } from 'lucide-react'
 
 const API_BASE = '/api/v1'
@@ -87,15 +87,6 @@ export default function Articles() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles'] })
       setSelectedArticle(null)
-    },
-  })
-
-  // 刷新单篇文章
-  const refreshMutation = useMutation({
-    mutationFn: (articleId: string) => 
-      axios.post(`${API_BASE}/articles/${articleId}/refresh`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['articles'] })
     },
   })
 

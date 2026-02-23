@@ -157,10 +157,6 @@ export default function Excerpts() {
     },
   })
 
-  const getPodcastDocumentMutation = useMutation({
-    mutationFn: (id: number) => axios.get(`${API_BASE}/articles/${id}/podcast-document`),
-  })
-
   const filteredExcerpts = excerpts?.filter((excerpt: any) => {
     if (!search) return true
     const searchLower = search.toLowerCase()

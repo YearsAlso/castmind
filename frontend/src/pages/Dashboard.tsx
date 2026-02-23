@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { Rss, BookOpen, Clock, TrendingUp, AlertCircle, Mic } from 'lucide-react'
+import { Rss, BookOpen, Clock, TrendingUp, Mic } from 'lucide-react'
 
 const API_BASE = '/api/v1'
 

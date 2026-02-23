@@ -21,7 +21,7 @@
       "添加播放/暂停/进度控制",
       "添加播放速度控制"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 1,
     "ux_impact": "high",
     "reason": "当前跳转到外部播放体验差"
