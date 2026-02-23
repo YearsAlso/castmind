@@ -6,10 +6,23 @@ import toast from 'react-hot-toast'
 import {
   Search, Play, Pause, Volume2, FileText, Download,
   CheckCircle, Clock, AlertCircle, Loader2, Plus,
-  SkipBack, SkipForward, Gauge
+  SkipBack, SkipForward, Gauge, X, Zap
 } from 'lucide-react'
 
 const API_BASE = '/api/v1'
+
+// 处理结果类型
+interface PipelineResult {
+  status: string
+  message: string
+  article_id: number
+  results: {
+    download: any
+    transcribe: any
+    analyze: any
+  }
+  timestamp: string
+}
 
 // 音频播放器组件
 interface AudioPlayerProps {
@@ -173,6 +186,11 @@ export default function Podcasts() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [playingPodcast, setPlayingPodcast] = useState<number | null>(null)
+  const [processingPodcast, setProcessingPodcast] = useState<number | null>(null)
+  const [processingStep, setProcessingStep] = useState<string>('')
+  const [processingProgress, setProcessingProgress] = useState(0)
+  const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null)
+  const [showResultModal, setShowResultModal] = useState(false)
   const pageSize = 20
 
   const queryClient = useQueryClient()
@@ -216,13 +234,48 @@ export default function Podcasts() {
   })
 
   const fullPipelineMutation = useMutation({
-    mutationFn: (id: number) => axios.post(`${API_BASE}/articles/${id}/full-pipeline`),
+    mutationFn: async (id: number) => {
+      // 开始处理
+      setProcessingPodcast(id)
+      setProcessingStep('准备中...')
+      setProcessingProgress(0)
+
+      // 模拟进度更新
+      const progressInterval = setInterval(() => {
+        setProcessingProgress(prev => {
+          if (prev < 90) return prev + 10
+          return prev
+        })
+      }, 500)
+
+      try {
+        const response = await axios.post<PipelineResult>(`${API_BASE}/articles/${id}/full-pipeline`)
+        clearInterval(progressInterval)
+        setProcessingProgress(100)
+        setProcessingStep('处理完成')
+
+        // 显示结果弹窗
+        setPipelineResult(response.data)
+        setShowResultModal(true)
+
+        queryClient.invalidateQueries({ queryKey: ['podcasts'] })
+        return response.data
+      } catch (error: any) {
+        clearInterval(progressInterval)
+        setProcessingPodcast(null)
+        setProcessingStep('')
+        setProcessingProgress(0)
+        throw error
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['podcasts'] })
-      toast.success('完整处理流程已启动')
+      toast.success('完整处理流程已完成')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || '处理流程启动失败')
+      setProcessingPodcast(null)
+      setProcessingStep('')
+      setProcessingProgress(0)
+      toast.error(error.response?.data?.detail || '处理流程失败')
     },
   })
 
@@ -358,6 +411,32 @@ export default function Podcasts() {
         </div>
       </div>
 
+      {/* 处理进度条 */}
+      {processingPodcast && (
+        <div className="card bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 text-primary-600 animate-spin" />
+              <span className="font-medium text-primary-900">
+                正在处理: {podcasts.find((p: any) => p.id === processingPodcast)?.title || '播客'}
+              </span>
+            </div>
+            <span className="text-sm text-primary-700">{processingStep}</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div
+              className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+              style={{ width: `${processingProgress}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-gray-600">
+            <span>下载音频</span>
+            <span>转录音频</span>
+            <span>AI 分析</span>
+          </div>
+        </div>
+      )}
+
       {/* 播客列表 */}
       <div className="space-y-4">
         {filteredPodcasts.map((podcast: any) => (
@@ -464,11 +543,11 @@ export default function Podcasts() {
                 {!podcast.transcript && podcast.audio_url && (
                   <button
                     onClick={() => fullPipelineMutation.mutate(podcast.id)}
-                    disabled={fullPipelineMutation.isPending}
+                    disabled={fullPipelineMutation.isPending || processingPodcast === podcast.id}
                     className="btn btn-sm btn-primary flex items-center"
                   >
-                    <Loader2 className={`h-4 w-4 mr-1 ${fullPipelineMutation.isPending ? 'animate-spin' : ''}`} />
-                    {fullPipelineMutation.isPending ? '处理中' : '一键处理'}
+                    <Zap className="h-4 w-4 mr-1" />
+                    {processingPodcast === podcast.id ? '处理中...' : '开始处理'}
                   </button>
                 )}
               </div>
@@ -518,6 +597,127 @@ export default function Podcasts() {
             >
               下一页
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 处理结果 Modal */}
+      {showResultModal && pipelineResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            {/* 头部 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center gap-3">
+                {pipelineResult.status === 'success' ? (
+                  <CheckCircle className="h-6 w-6 text-green-500" />
+                ) : pipelineResult.status === 'partial' ? (
+                  <AlertCircle className="h-6 w-6 text-yellow-500" />
+                ) : (
+                  <AlertCircle className="h-6 w-6 text-red-500" />
+                )}
+                <h2 className="text-lg font-semibold text-gray-900">处理结果</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowResultModal(false)
+                  setProcessingPodcast(null)
+                  setProcessingStep('')
+                  setProcessingProgress(0)
+                  setPipelineResult(null)
+                }}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* 内容 */}
+            <div className="px-6 py-4 overflow-y-auto max-h-[60vh]">
+              {/* 状态摘要 */}
+              <div className={`mb-4 p-4 rounded-lg ${
+                pipelineResult.status === 'success' ? 'bg-green-50' :
+                pipelineResult.status === 'partial' ? 'bg-yellow-50' : 'bg-red-50'
+              }`}>
+                <p className={`font-medium ${
+                  pipelineResult.status === 'success' ? 'text-green-800' :
+                  pipelineResult.status === 'partial' ? 'text-yellow-800' : 'text-red-800'
+                }`}>
+                  {pipelineResult.message}
+                </p>
+              </div>
+
+              {/* 步骤详情 */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-900">处理详情</h3>
+
+                {/* 下载步骤 */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  {pipelineResult.results?.download?.status === 'success' ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">下载音频</p>
+                    <p className="text-sm text-gray-600">
+                      {pipelineResult.results?.download?.status === 'success'
+                        ? pipelineResult.results?.download?.message || '下载成功'
+                        : pipelineResult.results?.download?.message || '下载失败'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 转录步骤 */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  {pipelineResult.results?.transcribe?.status === 'success' ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">转录音频</p>
+                    <p className="text-sm text-gray-600">
+                      {pipelineResult.results?.transcribe?.status === 'success'
+                        ? pipelineResult.results?.transcribe?.message || '转录成功'
+                        : pipelineResult.results?.transcribe?.message || '转录失败'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 分析步骤 */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  {pipelineResult.results?.analyze?.status === 'success' ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">AI 分析</p>
+                    <p className="text-sm text-gray-600">
+                      {pipelineResult.results?.analyze?.status === 'success'
+                        ? pipelineResult.results?.analyze?.message || '分析成功'
+                        : pipelineResult.results?.analyze?.message || '分析失败'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 底部按钮 */}
+            <div className="px-6 py-4 border-t bg-gray-50">
+              <button
+                onClick={() => {
+                  setShowResultModal(false)
+                  setProcessingPodcast(null)
+                  setProcessingStep('')
+                  setProcessingProgress(0)
+                  setPipelineResult(null)
+                }}
+                className="w-full btn btn-primary"
+              >
+                确定
+              </button>
+            </div>
           </div>
         </div>
       )}
