@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
-import { 
+import toast from 'react-hot-toast'
+import {
   Search, Play, Pause, Volume2, FileText, Download,
   CheckCircle, Clock, AlertCircle, Loader2, Plus,
   SkipBack, SkipForward, Gauge
@@ -185,6 +186,10 @@ export default function Podcasts() {
     mutationFn: (id: number) => axios.post(`${API_BASE}/articles/${id}/download-audio`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['podcasts'] })
+      toast.success('音频下载成功')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '音频下载失败')
     },
   })
 
@@ -192,6 +197,10 @@ export default function Podcasts() {
     mutationFn: (id: number) => axios.post(`${API_BASE}/articles/${id}/transcribe`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['podcasts'] })
+      toast.success('转录任务已启动')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '转录任务启动失败')
     },
   })
 
@@ -199,6 +208,10 @@ export default function Podcasts() {
     mutationFn: (id: number) => axios.post(`${API_BASE}/articles/${id}/analyze-transcript`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['podcasts'] })
+      toast.success('分析任务已启动')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '分析任务启动失败')
     },
   })
 
@@ -206,6 +219,10 @@ export default function Podcasts() {
     mutationFn: (id: number) => axios.post(`${API_BASE}/articles/${id}/full-pipeline`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['podcasts'] })
+      toast.success('完整处理流程已启动')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '处理流程启动失败')
     },
   })
 

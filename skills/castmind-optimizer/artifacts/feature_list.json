@@ -48,7 +48,7 @@
       "在 mutation 成功/失败时显示通知",
       "统一所有页面的反馈机制"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 1,
     "ux_impact": "high",
     "reason": "用户不知道操作结果"

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { 
-  Search, Filter, Eye, EyeOff, CheckCircle, 
+import toast from 'react-hot-toast'
+import {
+  Search, Filter, Eye, EyeOff, CheckCircle,
   Hash, Copy, BookOpen, Star, Layout, Play,
   Volume2, FileText
 } from 'lucide-react'
@@ -139,6 +140,10 @@ export default function Excerpts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['excerpts'] })
       queryClient.invalidateQueries({ queryKey: ['excerpt-stats'] })
+      toast.success('已标记为已读')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '标记已读失败')
     },
   })
 
@@ -147,6 +152,10 @@ export default function Excerpts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['excerpts'] })
       queryClient.invalidateQueries({ queryKey: ['excerpt-stats'] })
+      toast.success('已标记为未读')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '标记未读失败')
     },
   })
 
@@ -154,6 +163,10 @@ export default function Excerpts() {
     mutationFn: (id: number) => axios.post(`${API_BASE}/articles/${id}/analyze-podcast`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['excerpts'] })
+      toast.success('分析任务已启动')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '分析任务启动失败')
     },
   })
 

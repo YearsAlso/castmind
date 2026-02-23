@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import toast from 'react-hot-toast'
 import { Plus, RefreshCw, Edit, Trash2, ExternalLink, Save, X } from 'lucide-react'
 
 const API_BASE = '/api/v1'
@@ -47,6 +48,10 @@ export default function Feeds() {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
       setShowAddForm(false)
       setNewFeed({ name: '', url: '', category: '技术', interval: 3600 })
+      toast.success('订阅源添加成功')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '添加订阅源失败')
     },
   })
 
@@ -56,11 +61,15 @@ export default function Feeds() {
   }
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number, data: any }) => 
+    mutationFn: ({ id, data }: { id: number, data: any }) =>
       axios.put(`${API_BASE}/feeds/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
       setEditingFeed(null)
+      toast.success('订阅源更新成功')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '更新订阅源失败')
     },
   })
 
@@ -68,6 +77,10 @@ export default function Feeds() {
     mutationFn: (id: number) => axios.delete(`${API_BASE}/feeds/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
+      toast.success('订阅源删除成功')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '删除订阅源失败')
     },
   })
 
@@ -75,6 +88,10 @@ export default function Feeds() {
     mutationFn: (id: number) => axios.post(`${API_BASE}/feeds/${id}/fetch`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
+      toast.success('订阅源抓取成功')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '抓取订阅源失败')
     },
   })
 

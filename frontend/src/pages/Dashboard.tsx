@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import toast from 'react-hot-toast'
 import { Rss, BookOpen, Clock, TrendingUp, Mic } from 'lucide-react'
 
 const API_BASE = '/api/v1'
@@ -42,6 +43,10 @@ export default function Dashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
       queryClient.invalidateQueries({ queryKey: ['stats'] })
+      toast.success('全部订阅源抓取成功')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '抓取订阅源失败')
     },
   })
 

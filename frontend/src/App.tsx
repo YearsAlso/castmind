@@ -2,6 +2,7 @@ import { Routes, Route, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { Home, Rss, BookOpen, Settings, BarChart3, Mic, FileText } from 'lucide-react'
+import { Toaster } from 'react-hot-toast'
 import Dashboard from './pages/Dashboard'
 import Feeds from './pages/Feeds'
 import Excerpts from './pages/Excerpts'
@@ -99,6 +100,32 @@ function App() {
           ))}
         </div>
       </div>
+
+      {/* Toast 通知组件 */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </div>
   )
 }

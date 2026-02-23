@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { 
-  Search, Eye, EyeOff, CheckCircle, 
+import toast from 'react-hot-toast'
+import {
+  Search, Eye, EyeOff, CheckCircle,
   Hash, Copy, BookOpen,
   Trash2, RefreshCw, ChevronLeft, ChevronRight,
   ExternalLink, Calendar
@@ -73,26 +74,35 @@ export default function Articles() {
 
   // 标记为已读/未读
   const toggleReadMutation = useMutation({
-    mutationFn: (articleId: string) => 
+    mutationFn: (articleId: string) =>
       axios.patch(`${API_BASE}/articles/${articleId}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles'] })
+      toast.success('阅读状态已更新')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '更新阅读状态失败')
     },
   })
 
   // 删除文章
   const deleteMutation = useMutation({
-    mutationFn: (articleId: string) => 
+    mutationFn: (articleId: string) =>
       axios.delete(`${API_BASE}/articles/${articleId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles'] })
       setSelectedArticle(null)
+      toast.success('文章删除成功')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '删除文章失败')
     },
   })
 
   // 复制链接
   const copyLink = (url: string) => {
     navigator.clipboard.writeText(url)
+    toast.success('链接已复制到剪贴板')
   }
 
   // 格式化日期

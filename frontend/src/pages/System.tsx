@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { 
-  Server, Database, Cpu, HardDrive, 
+import toast from 'react-hot-toast'
+import {
+  Server, Database, Cpu, HardDrive,
   Play, Square, RefreshCw, Settings,
   Shield, Terminal, BarChart, Clock
 } from 'lucide-react'
@@ -33,6 +34,10 @@ export default function System() {
     mutationFn: () => axios.post(`${API_BASE}/system/scheduler/start`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health'] })
+      toast.success('调度器已启动')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '启动调度器失败')
     },
   })
 
@@ -40,11 +45,21 @@ export default function System() {
     mutationFn: () => axios.post(`${API_BASE}/system/scheduler/stop`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health'] })
+      toast.success('调度器已停止')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '停止调度器失败')
     },
   })
 
   const processAll = useMutation({
     mutationFn: () => axios.post(`${API_BASE}/system/process/all`),
+    onSuccess: () => {
+      toast.success('全量处理已启动')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || '全量处理启动失败')
+    },
   })
 
   const tabs = [
