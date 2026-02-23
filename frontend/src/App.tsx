@@ -9,14 +9,16 @@ import Excerpts from './pages/Excerpts'
 import Podcasts from './pages/Podcasts'
 import System from './pages/System'
 import Articles from './pages/Articles'
+import { LoadingState } from './components/Skeleton'
 
 const API_BASE = '/api/v1'
 
 function App() {
-  const { data: health, isLoading } = useQuery({
+  const { data: health, isLoading, refetch } = useQuery({
     queryKey: ['health'],
     queryFn: () => axios.get(`${API_BASE}/system/health`).then(res => res.data),
     refetchInterval: 30000,
+    retry: 1,
   })
 
   const navItems = [
@@ -56,17 +58,20 @@ function App() {
 
             <div className="flex items-center">
               {isLoading ? (
-                <div className="text-sm text-gray-500">检查服务状态...</div>
+                <LoadingState message="检查服务状态..." />
               ) : health?.status === 'healthy' ? (
                 <div className="flex items-center text-sm text-green-600">
                   <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
                   服务正常
                 </div>
               ) : (
-                <div className="flex items-center text-sm text-red-600">
+                <button
+                  onClick={() => refetch()}
+                  className="flex items-center text-sm text-red-600 hover:text-red-700"
+                >
                   <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
-                  服务异常
-                </div>
+                  服务异常 - 点击重试
+                </button>
               )}
             </div>
           </div>

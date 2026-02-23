@@ -8,6 +8,7 @@ import {
   Trash2, RefreshCw, ChevronLeft, ChevronRight,
   ExternalLink, Calendar
 } from 'lucide-react'
+import { SkeletonList, ErrorState } from '../components/Skeleton'
 
 const API_BASE = '/api/v1'
 
@@ -306,9 +307,12 @@ export default function Articles() {
       {/* 文章列表 */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">加载中...</div>
+          <SkeletonList rows={8} />
         ) : error ? (
-          <div className="p-8 text-center text-red-600">加载失败，请刷新重试</div>
+          <ErrorState
+            message="加载文章列表失败，请检查网络连接"
+            onRetry={() => refetch()}
+          />
         ) : !articlesData?.data?.length ? (
           <div className="p-8 text-center text-gray-500">暂无文章</div>
         ) : (

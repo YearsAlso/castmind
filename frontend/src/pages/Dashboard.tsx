@@ -2,13 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { Rss, BookOpen, Clock, TrendingUp, Mic } from 'lucide-react'
+import { SkeletonStats, ErrorState } from '../components/Skeleton'
 
 const API_BASE = '/api/v1'
 
 export default function Dashboard() {
   const queryClient = useQueryClient()
-  
-  const { data: stats, isLoading } = useQuery({
+
+  const { data: stats, isLoading, error, refetch: refetchStats } = useQuery({
     queryKey: ['stats'],
     queryFn: () => axios.get(`${API_BASE}/system/stats`).then(res => res.data),
   })
@@ -52,8 +53,27 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载中...</div>
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">仪表板</h1>
+          <p className="text-gray-600">欢迎使用 CastMind 播客订阅处理平台</p>
+        </div>
+        <SkeletonStats />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">仪表板</h1>
+          <p className="text-gray-600">欢迎使用 CastMind 播客订阅处理平台</p>
+        </div>
+        <ErrorState
+          message="加载仪表板数据失败，请检查网络连接"
+          onRetry={() => refetchStats()}
+        />
       </div>
     )
   }

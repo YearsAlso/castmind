@@ -8,6 +8,7 @@ import {
   CheckCircle, Clock, AlertCircle, Loader2, Plus,
   SkipBack, SkipForward, Gauge, X, Zap
 } from 'lucide-react'
+import { SkeletonList, ErrorState } from '../components/Skeleton'
 
 const API_BASE = '/api/v1'
 
@@ -195,7 +196,7 @@ export default function Podcasts() {
 
   const queryClient = useQueryClient()
 
-  const { data: podcastsData, isLoading } = useQuery({
+  const { data: podcastsData, isLoading, error, refetch } = useQuery({
     queryKey: ['podcasts', page, statusFilter],
     queryFn: () => axios.get(`${API_BASE}/articles/podcasts/`).then(res => res.data),
   })
@@ -355,8 +356,31 @@ export default function Podcasts() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载播客...</div>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">播客管理</h1>
+            <p className="text-gray-600">管理播客内容：下载、转录、AI分析</p>
+          </div>
+        </div>
+        <SkeletonList rows={6} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">播客管理</h1>
+            <p className="text-gray-600">管理播客内容：下载、转录、AI分析</p>
+          </div>
+        </div>
+        <ErrorState
+          message="加载播客列表失败，请检查网络连接"
+          onRetry={() => refetch()}
+        />
       </div>
     )
   }

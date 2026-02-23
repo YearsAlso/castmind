@@ -7,6 +7,7 @@ import {
   Hash, Copy, BookOpen, Star, Layout, Play,
   Volume2, FileText
 } from 'lucide-react'
+import { SkeletonList, ErrorState } from '../components/Skeleton'
 
 const API_BASE = '/api/v1'
 
@@ -118,7 +119,7 @@ export default function Excerpts() {
 
   const queryClient = useQueryClient()
 
-  const { data: excerpts, isLoading } = useQuery({
+  const { data: excerpts, isLoading, error, refetch } = useQuery({
     queryKey: ['excerpts', page, statusFilter],
     queryFn: () => axios.get(`${API_BASE}/articles`, {
       params: {
@@ -196,8 +197,31 @@ export default function Excerpts() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载内容...</div>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">内容管理</h1>
+            <p className="text-gray-600">管理从订阅源提取的内容</p>
+          </div>
+        </div>
+        <SkeletonList rows={6} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">内容管理</h1>
+            <p className="text-gray-600">管理从订阅源提取的内容</p>
+          </div>
+        </div>
+        <ErrorState
+          message="加载内容失败，请检查网络连接"
+          onRetry={() => refetch()}
+        />
       </div>
     )
   }

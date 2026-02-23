@@ -99,7 +99,7 @@
       "替换所有'加载中...'文字",
       "添加重试按钮"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 3,
     "ux_impact": "low",
     "reason": "提升加载体验"

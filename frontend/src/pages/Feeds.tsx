@@ -4,6 +4,7 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 import { Plus, RefreshCw, Edit, Trash2, ExternalLink, Save, X } from 'lucide-react'
 import AddFeedModal from '../components/AddFeedModal'
+import { SkeletonList, ErrorState } from '../components/Skeleton'
 
 const API_BASE = '/api/v1'
 
@@ -22,7 +23,7 @@ export default function Feeds() {
   
   const queryClient = useQueryClient()
 
-  const { data: feeds, isLoading } = useQuery({
+  const { data: feeds, isLoading, error, refetch } = useQuery({
     queryKey: ['feeds'],
     queryFn: () => axios.get(`${API_BASE}/feeds/`).then(res => res.data),
   })
@@ -72,14 +73,6 @@ export default function Feeds() {
     },
   })
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载订阅源...</div>
-      </div>
-    )
-  }
-
   const handleEdit = (feed: any) => {
     setEditingFeed(feed.id)
     setEditForm({
@@ -101,8 +94,31 @@ export default function Feeds() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载订阅源...</div>
+      <div>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">订阅源管理</h1>
+            <p className="text-gray-600">管理您的 RSS/Atom 订阅源</p>
+          </div>
+        </div>
+        <SkeletonList rows={6} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">订阅源管理</h1>
+            <p className="text-gray-600">管理您的 RSS/Atom 订阅源</p>
+          </div>
+        </div>
+        <ErrorState
+          message="加载订阅源失败，请检查网络连接"
+          onRetry={() => refetch()}
+        />
       </div>
     )
   }
