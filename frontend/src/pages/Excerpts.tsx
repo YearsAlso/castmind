@@ -183,7 +183,7 @@ export default function Excerpts() {
   })
 
   const statusTabs = [
-    { id: 'all', label: '全部摘录', count: stats?.total || 0 },
+    { id: 'all', label: '全部内容', count: stats?.total || 0 },
     { id: 'unread', label: '未读', count: stats?.unread || 0 },
     { id: 'read', label: '已读', count: (stats?.total || 0) - (stats?.unread || 0) },
     { id: 'processed', label: '已处理', count: stats?.processed || 0 },
@@ -197,7 +197,7 @@ export default function Excerpts() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载摘录...</div>
+        <div className="text-gray-500">加载内容...</div>
       </div>
     )
   }
@@ -207,8 +207,8 @@ export default function Excerpts() {
       {/* 页面标题和操作 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">摘录管理</h1>
-          <p className="text-gray-600">管理从订阅源提取的内容摘录和笔记</p>
+          <h1 className="text-2xl font-bold text-gray-900">内容管理</h1>
+          <p className="text-gray-600">管理从订阅源提取的内容</p>
         </div>
         
         <div className="flex flex-wrap gap-2">
@@ -284,7 +284,7 @@ export default function Excerpts() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="搜索摘录内容、标题、关键词..."
+              placeholder="搜索内容、标题、关键词..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -487,7 +487,7 @@ export default function Excerpts() {
         {excerpts?.length > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
             <div className="text-sm text-gray-700">
-              显示第 {(page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, stats?.total || 0)} 条，共 {stats?.total || 0} 条摘录
+              显示第 {(page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, stats?.total || 0)} 条，共 {stats?.total || 0} 条内容
             </div>
             <div className="flex space-x-2">
               <button
@@ -511,7 +511,7 @@ export default function Excerpts() {
         {(!excerpts || excerpts.length === 0) && (
           <div className="text-center py-12">
             <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无摘录</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无内容</h3>
             <p className="text-gray-600 max-w-md mx-auto">
               还没有从订阅源中提取到内容。请确保订阅源正常工作并已抓取到内容。
             </p>
@@ -531,7 +531,7 @@ export default function Excerpts() {
               <ul className="list-disc pl-5 space-y-1">
                 <li>使用文档模板功能可以自定义输出格式</li>
                 <li>关键词可以帮助你快速找到相关内容</li>
-                <li>定期清理已处理的摘录，保持列表整洁</li>
+                <li>定期清理已处理的内容，保持列表整洁</li>
                 <li>点击"查看原文"图标可以访问原始内容</li>
               </ul>
             </div>

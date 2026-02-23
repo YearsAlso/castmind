@@ -24,7 +24,7 @@ function App() {
     { path: '/feeds', label: '订阅源', icon: <Rss size={20} /> },
     { path: '/articles', label: '文章', icon: <FileText size={20} /> },
     { path: '/podcasts', label: '播客', icon: <Mic size={20} /> },
-    { path: '/excerpts', label: '摘录', icon: <BookOpen size={20} /> },
+    { path: '/contents', label: '内容', icon: <BookOpen size={20} /> },
     { path: '/system', label: '系统', icon: <Settings size={20} /> },
   ]
 
@@ -80,7 +80,7 @@ function App() {
           <Route path="/feeds" element={<Feeds />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/podcasts" element={<Podcasts />} />
-          <Route path="/excerpts" element={<Excerpts />} />
+          <Route path="/contents" element={<Excerpts />} />
           <Route path="/system" element={<System />} />
         </Routes>
       </main>

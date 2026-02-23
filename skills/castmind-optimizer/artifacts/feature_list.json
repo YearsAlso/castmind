@@ -86,7 +86,7 @@
       "将'摘录'改为'文章'或'内容'",
       "或明确区分'摘录'和'文章'的用途"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 2,
     "ux_impact": "medium",
     "reason": "导航语义不清"

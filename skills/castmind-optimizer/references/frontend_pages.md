@@ -7,7 +7,7 @@
 | Dashboard.tsx | / | 仪表盘，展示统计和最近内容 |
 | Feeds.tsx | /feeds | 订阅源管理 |
 | Articles.tsx | /articles | 文章列表 |
-| Excerpts.tsx | /excerpts | 摘录管理 |
+| Excerpts.tsx | /contents | 内容管理 |
 | Podcasts.tsx | /podcasts | 播客管理 |
 | System.tsx | /system | 系统设置 |
 
