@@ -79,7 +79,7 @@ function App() {
       </nav>
 
       {/* 主要内容区域 */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 pb-24 sm:pb-6">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/feeds" element={<Feeds />} />
@@ -91,13 +91,13 @@ function App() {
       </main>
 
       {/* 移动端底部导航 */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="flex justify-around py-3">
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+        <div className="flex justify-around py-2">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className="flex flex-col items-center text-xs text-gray-600 hover:text-primary-600"
+              className="flex flex-col items-center text-xs text-gray-600 hover:text-primary-600 p-2 min-w-[60px] min-h-[60px] justify-center"
             >
               {item.icon}
               <span className="mt-1">{item.label}</span>

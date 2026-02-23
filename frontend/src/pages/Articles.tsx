@@ -299,11 +299,11 @@ export default function Articles() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">文章列表</h1>
         <button
           onClick={() => refetch()}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 w-full sm:w-auto justify-center"
         >
           <RefreshCw size={16} />
           刷新
@@ -312,8 +312,8 @@ export default function Articles() {
 
       {/* 筛选和搜索 */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
+        <div className="flex flex-col gap-4">
+          <div className="w-full">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
@@ -325,29 +325,31 @@ export default function Articles() {
               />
             </div>
           </div>
-          
-          <select
-            value={selectedFeed}
-            onChange={(e) => setSelectedFeed(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          >
-            <option value="all">所有订阅源</option>
-            {feedsData?.data?.map((feed: any) => (
-              <option key={feed.id} value={feed.id}>
-                {feed.name}
-              </option>
-            ))}
-          </select>
 
-          <select
-            value={filterRead}
-            onChange={(e) => setFilterRead(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          >
-            <option value="all">全部</option>
-            <option value="read">已读</option>
-            <option value="unread">未读</option>
-          </select>
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={selectedFeed}
+              onChange={(e) => setSelectedFeed(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 sm:flex-none"
+            >
+              <option value="all">所有订阅源</option>
+              {feedsData?.data?.map((feed: any) => (
+                <option key={feed.id} value={feed.id}>
+                  {feed.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={filterRead}
+              onChange={(e) => setFilterRead(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 sm:flex-none"
+            >
+              <option value="all">全部</option>
+              <option value="read">已读</option>
+              <option value="unread">未读</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -370,12 +372,12 @@ export default function Articles() {
                 <div className="bg-gray-50 px-4 py-2 flex items-center gap-4">
                   <button
                     onClick={() => handleSelectAll(selectedArticles.length > 0 && selectedArticles.length === articlesData?.data?.length)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   >
                     {selectedArticles.length > 0 && selectedArticles.length === articlesData?.data?.length ? (
-                      <CheckSquare className="h-4 w-4" />
+                      <CheckSquare className="h-5 w-5" />
                     ) : (
-                      <Square className="h-4 w-4" />
+                      <Square className="h-5 w-5" />
                     )}
                   </button>
                   <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 项</span>
@@ -395,12 +397,12 @@ export default function Articles() {
                           e.stopPropagation()
                           handleSelectArticle(article.id, !selectedArticles.includes(article.id))
                         }}
-                        className="mt-1 mr-3 text-gray-500 hover:text-gray-700"
+                        className="mt-1 mr-3 text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       >
                         {selectedArticles.includes(article.id) ? (
-                          <CheckSquare className="h-4 w-4" />
+                          <CheckSquare className="h-5 w-5" />
                         ) : (
-                          <Square className="h-4 w-4" />
+                          <Square className="h-5 w-5" />
                         )}
                       </button>
                       <div
@@ -433,30 +435,30 @@ export default function Articles() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           toggleReadMutation.mutate(article.id)
                         }}
-                        className={`p-2 rounded-md transition-colors ${
+                        className={`p-2 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
                           article.read_status
                             ? 'text-gray-400 hover:text-gray-600'
                             : 'text-blue-600 hover:text-blue-700'
                         }`}
                         title={article.read_status ? '标记未读' : '标记已读'}
                       >
-                        {article.read_status ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {article.read_status ? <EyeOff size={20} /> : <Eye size={20} />}
                       </button>
                       <a
                         href={article.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded-md transition-colors"
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded-md transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                         title="在新窗口打开"
                       >
-                        <ExternalLink size={18} />
+                        <ExternalLink size={20} />
                       </a>
                     </div>
                   </div>
@@ -466,15 +468,15 @@ export default function Articles() {
 
             {/* 批量操作工具栏 */}
             {selectedArticles.length > 0 && (
-              <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between bg-gray-50">
+              <div className="border-t border-gray-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-600">已选择 {selectedArticles.length} 篇文章</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap justify-center gap-2">
                   <button
                     onClick={() => batchMarkReadMutation.mutate(selectedArticles)}
                     disabled={batchMarkReadMutation.isPending}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm disabled:opacity-50 min-h-[44px]"
                   >
                     <Eye className="h-4 w-4" />
                     批量标记已读
@@ -486,14 +488,14 @@ export default function Articles() {
                       }
                     }}
                     disabled={batchDeleteMutation.isPending}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm disabled:opacity-50 min-h-[44px]"
                   >
                     <Trash2 className="h-4 w-4" />
                     批量删除
                   </button>
                   <button
                     onClick={() => setSelectedArticles([])}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
+                    className="inline-flex items-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm min-h-[44px]"
                   >
                     取消选择
                   </button>

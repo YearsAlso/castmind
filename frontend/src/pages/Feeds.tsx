@@ -170,14 +170,14 @@ export default function Feeds() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">订阅源管理</h1>
           <p className="text-gray-600">管理您的 RSS/Atom 订阅源</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn btn-primary flex items-center"
+          className="btn btn-primary flex items-center w-full sm:w-auto justify-center"
         >
           <Plus className="h-4 w-4 mr-2" />
           添加订阅源
@@ -186,11 +186,11 @@ export default function Feeds() {
 
       {/* 订阅源列表 */}
       <div className="card">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h2 className="text-lg font-semibold text-gray-900">所有订阅源</h2>
-          <div className="flex items-center space-x-2">
-            <select 
-              className="input py-1 text-sm"
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <select
+              className="input py-2 text-sm flex-1 sm:flex-none"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -199,8 +199,8 @@ export default function Feeds() {
               <option value="paused">暂停</option>
               <option value="error">错误</option>
             </select>
-            <select 
-              className="input py-1 text-sm"
+            <select
+              className="input py-2 text-sm flex-1 sm:flex-none"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
@@ -212,19 +212,20 @@ export default function Feeds() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent -mx-4 px-4">
+          <div className="min-w-[800px]">
+            <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
                   <button
                     onClick={() => handleSelectAll(selectedFeeds.length > 0 && selectedFeeds.length === filteredFeeds?.length)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   >
                     {selectedFeeds.length > 0 && selectedFeeds.length === filteredFeeds?.length ? (
-                      <CheckSquare className="h-4 w-4" />
+                      <CheckSquare className="h-5 w-5" />
                     ) : (
-                      <Square className="h-4 w-4" />
+                      <Square className="h-5 w-5" />
                     )}
                   </button>
                 </th>
@@ -294,21 +295,21 @@ export default function Feeds() {
                         {feed.article_count || 0}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-1">
                           <button
                             onClick={() => handleSaveEdit(feed.id)}
                             disabled={updateMutation.isPending}
-                            className="text-green-600 hover:text-green-900"
+                            className="text-green-600 hover:text-green-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="保存"
                           >
-                            <Save className="h-4 w-4" />
+                            <Save className="h-5 w-5" />
                           </button>
                           <button
                             onClick={handleCancelEdit}
-                            className="text-gray-600 hover:text-gray-900"
+                            className="text-gray-600 hover:text-gray-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="取消"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-5 w-5" />
                           </button>
                         </div>
                       </td>
@@ -316,18 +317,18 @@ export default function Feeds() {
                   ) : (
                     // 查看模式
                     <>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-2 py-4 whitespace-nowrap">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleSelectFeed(feed.id, !selectedFeeds.includes(feed.id))
                           }}
-                          className="text-gray-500 hover:text-gray-700"
+                          className="text-gray-500 hover:text-gray-700 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                         >
                           {selectedFeeds.includes(feed.id) ? (
-                            <CheckSquare className="h-4 w-4" />
+                            <CheckSquare className="h-5 w-5" />
                           ) : (
-                            <Square className="h-4 w-4" />
+                            <Square className="h-5 w-5" />
                           )}
                         </button>
                       </td>
@@ -356,30 +357,30 @@ export default function Feeds() {
                         {feed.article_count || 0}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-1">
                           <button
                             onClick={() => fetchMutation.mutate(feed.id)}
                             disabled={fetchMutation?.isPending}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-blue-600 hover:text-blue-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="手动抓取"
                           >
-                            <RefreshCw className="h-4 w-4" />
+                            <RefreshCw className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => handleEdit(feed)}
-                            className="text-gray-600 hover:text-gray-900"
+                            className="text-gray-600 hover:text-gray-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="编辑"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-5 w-5" />
                           </button>
                           <a
                             href={feed.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-gray-600 hover:text-gray-900"
+                            className="text-gray-600 hover:text-gray-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="打开链接"
                           >
-                            <ExternalLink className="h-4 w-4" />
+                            <ExternalLink className="h-5 w-5" />
                           </a>
                           <button
                             onClick={() => {
@@ -388,10 +389,10 @@ export default function Feeds() {
                               }
                             }}
                             disabled={deleteMutation?.isPending}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-600 hover:text-red-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="删除"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-5 w-5" />
                           </button>
                         </div>
                       </td>
@@ -401,17 +402,18 @@ export default function Feeds() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* 批量操作工具栏 */}
         {selectedFeeds.length > 0 && (
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-4 z-40">
+          <div className="fixed bottom-20 sm:bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 sm:px-6 py-3 rounded-lg shadow-lg flex flex-col sm:flex-row items-center gap-3 sm:gap-4 z-40 w-[calc(100%-2rem)] sm:w-auto">
             <span className="text-sm">已选择 {selectedFeeds.length} 项</span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <button
                 onClick={() => batchFetchMutation.mutate(selectedFeeds)}
                 disabled={batchFetchMutation.isPending}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-sm disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm disabled:opacity-50 min-h-[44px]"
               >
                 <RefreshCw className={`h-4 w-4 ${batchFetchMutation.isPending ? 'animate-spin' : ''}`} />
                 批量刷新
@@ -423,14 +425,14 @@ export default function Feeds() {
                   }
                 }}
                 disabled={batchDeleteMutation.isPending}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50 min-h-[44px]"
               >
                 <Trash2 className="h-4 w-4" />
                 批量删除
               </button>
               <button
                 onClick={() => setSelectedFeeds([])}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 rounded text-sm"
+                className="inline-flex items-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm min-h-[44px]"
               >
                 取消选择
               </button>

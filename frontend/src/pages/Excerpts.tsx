@@ -341,8 +341,9 @@ export default function Excerpts() {
 
       {/* 摘录列表 */}
       <div className="card">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent -mx-4 px-4">
+          <div className="min-w-[800px]">
+            <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -460,44 +461,44 @@ export default function Excerpts() {
                     {excerpt.published_at ? new Date(excerpt.published_at).toLocaleDateString() : '--'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       {/* 播客播放/分析按钮 */}
                       {(excerpt.is_podcast || excerpt.audio_url) && (
                         <>
                           {excerpt.audio_url && (
                             <button
                               onClick={() => window.open(excerpt.audio_url, '_blank')}
-                              className="text-purple-600 hover:text-purple-900"
+                              className="text-purple-600 hover:text-purple-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                               title="播放播客"
                             >
-                              <Play className="h-4 w-4" />
+                              <Play className="h-5 w-5" />
                             </button>
                           )}
                           {!excerpt.podcast_summary && (
                             <button
                               onClick={() => analyzePodcastMutation.mutate(excerpt.id)}
                               disabled={analyzePodcastMutation.isPending}
-                              className="text-purple-600 hover:text-purple-900 disabled:opacity-50"
+                              className="text-purple-600 hover:text-purple-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-50"
                               title="生成播客摘要"
                             >
-                              <Volume2 className="h-4 w-4" />
+                              <Volume2 className="h-5 w-5" />
                             </button>
                           )}
                         </>
                       )}
                       <button
                         onClick={() => window.open(excerpt.url, '_blank')}
-                        className="text-gray-600 hover:text-gray-900"
+                        className="text-gray-600 hover:text-gray-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                         title="查看原文"
                       >
-                        <BookOpen className="h-4 w-4" />
+                        <BookOpen className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => excerpt.read_status ? markAsUnreadMutation.mutate(excerpt.id) : markAsReadMutation.mutate(excerpt.id)}
-                        className="text-gray-600 hover:text-gray-900"
+                        className="text-gray-600 hover:text-gray-900 p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                         title={excerpt.read_status ? "标记为未读" : "标记为已读"}
                       >
-                        {excerpt.read_status ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {excerpt.read_status ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </td>
@@ -505,6 +506,7 @@ export default function Excerpts() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* 分页 */}
