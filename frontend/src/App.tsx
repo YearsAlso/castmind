@@ -1,7 +1,7 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { Home, Rss, BookOpen, Settings, BarChart3, Mic, FileText } from 'lucide-react'
+import { Home, Rss, BookOpen, Settings, BarChart3, Mic, FileText, Search } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import Dashboard from './pages/Dashboard'
 import Feeds from './pages/Feeds'
@@ -10,10 +10,27 @@ import Podcasts from './pages/Podcasts'
 import System from './pages/System'
 import Articles from './pages/Articles'
 import { LoadingState } from './components/Skeleton'
+import SearchModal from './components/SearchModal'
+import { useState, useEffect } from 'react'
 
 const API_BASE = '/api/v1'
 
 function App() {
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+
+  // Cmd+K 快捷键监听
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setIsSearchOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const { data: health, isLoading, refetch } = useQuery({
     queryKey: ['health'],
     queryFn: () => axios.get(`${API_BASE}/system/health`).then(res => res.data),
@@ -56,7 +73,18 @@ function App() {
               </div>
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
+              {/* 搜索按钮 */}
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="flex items-center px-3 py-1.5 text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">搜索</span>
+                <kbd className="hidden sm:inline ml-2 px-1.5 py-0.5 text-xs bg-gray-200 rounded">
+                  ⌘K
+                </kbd>
+              </button>
               {isLoading ? (
                 <LoadingState message="检查服务状态..." />
               ) : health?.status === 'healthy' ? (
@@ -105,6 +133,12 @@ function App() {
           ))}
         </div>
       </div>
+
+      {/* 搜索弹窗 */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
 
       {/* Toast 通知组件 */}
       <Toaster
