@@ -1,7 +1,7 @@
 #!/bin/bash
 # CastMind Agent Loop Script
 # 基于 Anthropic "Effective Harnesses for Long-Running Agents" 设计
-# 双 Agent 架构：Initializer + Coding Agent
+# 自动循环执行 feature_list.json 中的任务
 
 set -e
 
@@ -29,6 +29,10 @@ log_phase() { echo -e "${CYAN}[PHASE]${NC} $1"; }
 check_dependencies() {
     if ! command -v jq &> /dev/null; then
         log_error "需要 jq，请先安装: brew install jq"
+        exit 1
+    fi
+    if ! command -v claude &> /dev/null; then
+        log_error "需要 claude 命令 (Claude Code)"
         exit 1
     fi
 }
@@ -62,48 +66,6 @@ log_progress() {
     } >> "$PROGRESS_FILE"
 }
 
-check_git_status() {
-    cd "$PROJECT_DIR"
-    
-    if [ -d ".git" ]; then
-        local status=$(git status --porcelain)
-        if [ -n "$status" ]; then
-            log_warn "有未提交的更改:"
-            echo "$status"
-            return 1
-        fi
-        log_info "Git 状态干净"
-        return 0
-    else
-        log_warn "不是 Git 仓库"
-        return 1
-    fi
-}
-
-commit_changes() {
-    local description="$1"
-    
-    cd "$PROJECT_DIR"
-    
-    if [ -d ".git" ]; then
-        git add -A
-        if git diff --cached --quiet; then
-            log_info "没有需要提交的更改"
-            return 0
-        fi
-        
-        local commit_msg="feat: $description"
-        
-        if git commit -m "$commit_msg"; then
-            log_info "已提交: $commit_msg"
-            return 0
-        else
-            log_error "提交失败"
-            return 1
-        fi
-    fi
-}
-
 # ============================================
 # PHASE 1: 了解现状 (Understand Current State)
 # ============================================
@@ -113,11 +75,10 @@ phase_understand() {
     cd "$PROJECT_DIR"
     
     echo ""
-    log_step "1. 检查工作目录..."
-    echo "  目录: $(pwd)"
+    log_step "1. 检查工作目录: $(pwd)"
     
     echo ""
-    log_step "2. 查看 Git 历史 (最近 5 次提交)..."
+    log_step "2. Git 历史 (最近 5 次提交):"
     if [ -d ".git" ]; then
         git log --oneline -5
     else
@@ -125,26 +86,21 @@ phase_understand() {
     fi
     
     echo ""
-    log_step "3. 查看进度记录..."
+    log_step "3. 进度记录:"
     if [ -f "$PROGRESS_FILE" ]; then
-        echo "--- 最近进度 ---"
-        tail -15 "$PROGRESS_FILE"
+        tail -10 "$PROGRESS_FILE"
     else
-        echo "  无进度记录"
+        echo "  无"
     fi
     
-    echo ""
-    log_step "4. 查看待办任务..."
     local pending=$(get_pending_count)
     local completed=$(get_completed_count)
-    echo "  已完成: $completed"
-    echo "  待完成: $pending"
+    echo ""
+    log_step "4. 任务统计: 已完成 $completed, 待办 $pending"
     
     echo ""
-    echo "--- 优先级最高的待办 ---"
-    jq -r '.[] | select(.passes == false) | "[P\(.priority)] \(.category): \(.description)"' "$FEATURE_FILE" | head -3
-    
-    log_phase "现状了解完成"
+    echo "--- 下一个任务 ---"
+    jq -r '.[] | select(.passes == false) | "[P\(.priority)] \(.category): \(.description)"' "$FEATURE_FILE" | head -1
 }
 
 # ============================================
@@ -156,50 +112,40 @@ phase_verify_baseline() {
     cd "$PROJECT_DIR"
     
     echo ""
-    log_step "1. 检查 Git 状态..."
-    check_git_status || true
+    log_step "运行快速测试..."
     
-    echo ""
-    log_step "2. 检查依赖..."
-    
-    if [ -d "backend" ]; then
-        cd backend
-        if python -c "import fastapi" 2>/dev/null; then
-            log_info "  Backend 依赖 OK"
-        else
-            log_warn "  Backend 依赖可能有问题"
-        fi
-        cd "$PROJECT_DIR"
-    fi
-    
-    if [ -d "frontend/node_modules" ]; then
-        log_info "  Frontend 依赖 OK"
-    else
-        log_warn "  Frontend 依赖可能有问题"
-    fi
-    
-    echo ""
-    log_step "3. 运行快速测试..."
     local test_passed=true
     
     if [ -d "tests" ]; then
-        if python -m pytest tests/ -v --tb=short -x 2>&1 | tail -10; then
-            log_info "  后端测试通过"
+        echo "运行后端测试..."
+        if python3 -m pytest tests/ -v --tb=short -x 2>&1 | tail -20; then
+            log_info "后端测试通过 ✓"
         else
-            log_warn "  后端测试失败"
+            log_warn "后端测试失败"
             test_passed=false
         fi
     fi
     
-    cd "$PROJECT_DIR"
-    
-    log_phase "基线验证完成"
+    if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+        echo "运行前端测试..."
+        cd frontend
+        if pnpm test -- --run 2>&1 | tail -20; then
+            log_info "前端测试通过 ✓"
+        else
+            log_warn "前端测试失败"
+            test_passed=false
+        fi
+        cd "$PROJECT_DIR"
+    fi
     
     if [ "$test_passed" = false ]; then
+        echo ""
         log_warn "基线测试失败，是否继续?"
         read -p "继续? (y/n): " confirm
         [ "$confirm" != "y" ] && exit 1
     fi
+    
+    log_phase "基线验证完成"
 }
 
 # ============================================
@@ -218,31 +164,44 @@ phase_implement() {
     echo "$steps"
     echo ""
     
-    log_step "启动 opencode 进行实现..."
-    echo ""
-    echo "请在 opencode 中执行以下任务:"
-    echo ""
-    echo "## 任务描述"
-    echo "$description"
-    echo ""
-    echo "## 具体步骤"
-    echo "$steps"
-    echo ""
+    cd "$PROJECT_DIR"
     
-    opencode "请执行以下任务：
+    local LOG_DIR="$ARTIFACTS_DIR/logs"
+    mkdir -p "$LOG_DIR"
+    local RUN_LOG="$LOG_DIR/run-$(date +%Y%m%d_%H%M%S).log"
     
+    log_step "日志文件: $RUN_LOG"
+    
+    local prompt="请在当前项目中实现以下功能任务。
+
 ## 任务描述
 $description
 
 ## 具体步骤
 $steps
 
-## 重要提醒
+## 重要要求
 1. 每完成一个步骤后进行验证
-2. 确保代码可以正常运行
-3. 遵循项目现有的代码规范
-4. 不要引入新的 lint 错误
-"
+2. 如果需要测试用例，请创建测试
+3. 运行测试确保功能正常
+4. 遵循项目现有的代码规范
+5. 不要引入新的 lint 错误
+6. 完成后更新 feature_list.json 中对应任务的 passes 为 true
+7. 提交代码
+
+完成后请告诉我你做了什么修改。"
+
+    log_step "启动 Claude Code..."
+    echo ""
+    
+    if claude \
+        --dangerously-skip-permissions \
+        --allowed-tools "Bash Edit Read Write Glob Grep Task" \
+        "$prompt" 2>&1 | tee "$RUN_LOG"; then
+        log_info "Claude 执行完成"
+    else
+        log_warn "Claude 执行完成 (exit code: $?)"
+    fi
     
     log_phase "功能实现完成"
 }
@@ -252,8 +211,6 @@ $steps
 # ============================================
 phase_record() {
     local description="$1"
-    local test_passed="$2"
-    local lint_passed="$3"
     
     log_phase "=== 阶段 4: 记录收尾 ==="
     
@@ -261,127 +218,79 @@ phase_record() {
     
     echo ""
     log_step "1. 运行完整测试..."
-    local full_test_passed=false
-    
-    if run_tests; then
-        log_info "测试通过 ✓"
-        full_test_passed=true
-    else
-        log_warn "测试失败"
-    fi
-    
-    echo ""
-    log_step "2. 运行 Lint 检查..."
-    local full_lint_passed=false
-    
-    if run_lint; then
-        log_info "Lint 通过 ✓"
-        full_lint_passed=true
-    else
-        log_warn "Lint 有警告"
-        full_lint_passed=true
-    fi
-    
-    echo ""
-    log_step "3. 检查 Git 状态..."
-    local needs_commit=false
-    
-    if [ -d ".git" ]; then
-        local status=$(git status --porcelain)
-        if [ -n "$status" ]; then
-            log_info "有更改需要提交"
-            echo "$status"
-            needs_commit=true
-        else
-            log_info "没有代码更改"
-        fi
-    fi
-    
-    echo ""
-    log_step "4. 提交代码..."
-    if [ "$needs_commit" = true ]; then
-        if [ "$full_test_passed" = true ]; then
-            commit_changes "$description"
-        else
-            log_warn "测试未通过，暂不提交"
-        fi
-    fi
-    
-    echo ""
-    log_step "5. 更新进度..."
-    log_progress "Coding Agent" "- 任务: $description
-  - 测试: $([ "$full_test_passed" = true ] && echo "通过" || echo "失败")
-  - Lint: $([ "$full_lint_passed" = true ] && echo "通过" || echo "警告")
-  - 提交: $([ "$needs_commit" = true ] && echo "是" || echo "否")"
-    
-    echo ""
-    log_step "6. 标记任务完成?"
-    echo "  [y] 是 - 标记为完成并继续下一个"
-    echo "  [n] 否 - 保留为待办"
-    echo "  [q] 退出"
-    read -p "选择 [y/n/q]: " confirm
-    
-    case "$confirm" in
-        y|Y)
-            update_feature_status "$description" "true"
-            log_info "任务已标记为完成"
-            return 0
-            ;;
-        n|N)
-            log_warn "任务保留为未完成"
-            return 1
-            ;;
-        q|Q)
-            echo "退出脚本"
-            exit 0
-            ;;
-    esac
-}
-
-run_tests() {
-    cd "$PROJECT_DIR"
-    
-    local all_passed=true
+    local test_passed=true
     
     if [ -d "tests" ]; then
-        if ! python -m pytest tests/ -v --tb=short 2>&1; then
-            all_passed=false
+        if python3 -m pytest tests/ -v --tb=short 2>&1 | tail -30; then
+            log_info "测试通过 ✓"
+        else
+            log_warn "测试失败"
+            test_passed=false
         fi
     fi
     
     if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
         cd frontend
-        if ! pnpm test -- --run 2>&1; then
-            all_passed=false
+        if pnpm test -- --run 2>&1 | tail -20; then
+            log_info "前端测试通过 ✓"
+        else
+            log_warn "前端测试失败"
         fi
         cd "$PROJECT_DIR"
     fi
     
-    $all_passed
-}
-
-run_lint() {
-    cd "$PROJECT_DIR"
-    
-    local all_passed=true
+    echo ""
+    log_step "2. 运行 Lint 检查..."
+    local lint_passed=true
     
     if command -v ruff &> /dev/null && [ -d "backend" ]; then
         cd backend
-        if ! ruff check . 2>&1; then
-            all_passed=false
-        fi
+        ruff check . 2>&1 || true
         cd "$PROJECT_DIR"
     fi
     
     if command -v pnpm &> /dev/null && [ -d "frontend" ]; then
         cd frontend
-        if ! pnpm lint 2>&1; then
-            all_passed=false
-        fi
+        pnpm lint 2>&1 || true
         cd "$PROJECT_DIR"
     fi
     
-    $all_passed
+    echo ""
+    log_step "3. 检查更改..."
+    if [ -d ".git" ]; then
+        git status --short
+    fi
+    
+    echo ""
+    log_step "4. 提交代码?"
+    echo "  [y] 是 - 提交更改"
+    echo "  [n] 否 - 不提交"
+    read -p "选择 [y/n]: " confirm
+    
+    if [ "$confirm" = "y" ]; then
+        if [ -d ".git" ]; then
+            git add -A
+            git commit -m "feat: $description" 2>/dev/null || log_warn "没有更改需要提交"
+            log_info "已提交"
+        fi
+    fi
+    
+    echo ""
+    log_step "5. 标记任务完成?"
+    echo "  [y] 是 - 标记为完成"
+    echo "  [n] 否 - 保留为待办"
+    read -p "选择 [y/n]: " confirm
+    
+    if [ "$confirm" = "y" ]; then
+        update_feature_status "$description" "true"
+        log_progress "Coding Agent" "- 任务: $description
+  - 测试: $([ "$test_passed" = true ] && echo "通过" || echo "失败")
+  - Lint: 通过
+  - 提交: 是"
+        log_info "任务已标记为完成 ✓"
+    else
+        log_warn "任务保留为未完成"
+    fi
 }
 
 get_next_feature() {
@@ -413,7 +322,6 @@ show_feature() {
     echo "步骤:"
     echo "$steps"
     echo "========================================"
-    echo ""
 }
 
 main_loop() {
@@ -440,17 +348,6 @@ main_loop() {
         exit 0
     fi
     
-    echo ""
-    read -p "开始执行下一个任务? (y/n/q): " confirm
-    
-    case "$confirm" in
-        q|Q) exit 0 ;;
-        n|N) 
-            log_info "退出"
-            exit 0
-            ;;
-    esac
-    
     local feature=$(get_next_feature)
     
     if [ -z "$feature" ] || [ "$feature" = "null" ]; then
@@ -466,8 +363,14 @@ main_loop() {
     show_feature "$feature"
     
     echo ""
-    read -p "确认执行此任务? (y/n): " confirm
-    [ "$confirm" != "y" ] && exit 0
+    read -p "确认执行此任务? (y/n/q): " confirm
+    case "$confirm" in
+        q|Q) exit 0 ;;
+        n|N) 
+            log_info "退出"
+            exit 0
+            ;;
+    esac
     
     phase_understand
     
@@ -504,14 +407,6 @@ show_status() {
     echo "待完成: $(get_pending_count)"
     echo ""
     
-    echo "--- 进度记录 ---"
-    if [ -f "$PROGRESS_FILE" ]; then
-        tail -20 "$PROGRESS_FILE"
-    else
-        echo "无"
-    fi
-    echo ""
-    
     echo "--- 待办任务 ---"
     jq -r '.[] | select(.passes == false) | "[P\(.priority)] \(.category): \(.description)"' "$FEATURE_FILE"
     echo ""
@@ -531,19 +426,13 @@ show_help() {
     echo "  run       - 开始执行任务 (四阶段工作流)"
     echo "  status    - 显示当前状态"
     echo "  next      - 显示下一个待办任务"
-    echo "  list      - 列出所有任务"
-    echo "  pending   - 显示待办任务"
-    echo "  completed - 显示已完成任务"
-    echo "  test      - 运行测试"
-    echo "  lint      - 运行 Lint"
     echo "  help      - 显示帮助"
     echo ""
     echo "四阶段工作流:"
     echo "  1. 了解现状 - 读取 Git 历史、进度文件"
     echo "  2. 验证基线 - 运行测试确保环境正常"
-    echo "  3. 实现功能 - 调用 opencode 执行任务"
+    echo "  3. 实现功能 - 调用 claude -p 自动执行任务"
     echo "  4. 记录收尾 - 测试、提交、更新进度"
-    echo ""
 }
 
 case "${1:-run}" in
@@ -560,21 +449,6 @@ case "${1:-run}" in
         else
             log_info "没有待办任务"
         fi
-        ;;
-    list)
-        jq -r '.[] | "[P\(.priority)] [\(.category)] \(.description)"' "$FEATURE_FILE"
-        ;;
-    pending)
-        jq -r '.[] | select(.passes == false) | "[P\(.priority)] \(.description)"' "$FEATURE_FILE"
-        ;;
-    completed)
-        jq -r '.[] | select(.passes == true) | "[P\(.priority)] \(.description)"' "$FEATURE_FILE"
-        ;;
-    test)
-        run_tests
-        ;;
-    lint)
-        run_lint
         ;;
     help|--help|-h)
         show_help

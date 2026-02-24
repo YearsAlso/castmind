@@ -149,7 +149,7 @@
       "创建 useToast hook",
       "重构现有 mutation"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 4,
     "ux_impact": "low",
     "reason": "代码维护性"
@@ -162,7 +162,7 @@
       "替换所有 any 类型",
       "添加类型检查"
     ],
-    "passes": false,
+    "passes": true,
     "priority": 5,
     "ux_impact": "low",
     "reason": "代码质量"
